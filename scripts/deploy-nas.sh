@@ -1,74 +1,44 @@
 #!/usr/bin/env bash
-# scripts/deploy-nas.sh — Script Automatizado de Deploy para o NAS (Staging: 4342 / Produção: 4341)
+# scripts/deploy-nas.sh — Sincroniza o código no Synology NAS via Git e executa update-nas.sh
 set -euo pipefail
 
-# Carregar variáveis do ficheiro .env se existir
 if [ -f ".env" ]; then
   set -a
   source .env
   set +a
 fi
 
-TARGET_ENV="${1:-both}" # prod | staging | both
 NAS_HOST="${NAS_HOST:-192.168.68.117}"
 NAS_USER="${NAS_USER:-davis.correia}"
 NAS_SSH_PORT="${NAS_SSH_PORT:-22}"
 NAS_DEPLOY_PATH="${NAS_DEPLOY_PATH:-/volume1/docker/slidofnac}"
-PROD_PORT="${PROD_PORT:-4341}"
-STAGING_PORT="${STAGING_PORT:-4342}"
+REPO_URL="https://github.com/davisrc73/slidofnac.git"
 
-echo "🚀 A iniciar deploy [${TARGET_ENV}] para ${NAS_USER}@${NAS_HOST}:${NAS_DEPLOY_PATH}..."
+echo "🚀 A sincronizar repositório GitHub no NAS (${NAS_USER}@${NAS_HOST}:${NAS_DEPLOY_PATH})..."
 
-# 1. Criar pasta remota e fazer backup preventivo da base de dados SQLite no NAS
-ssh -p "${NAS_SSH_PORT}" "${NAS_USER}@${NAS_HOST}" "
-  mkdir -p '${NAS_DEPLOY_PATH}/data/prod' '${NAS_DEPLOY_PATH}/data/staging' '${NAS_DEPLOY_PATH}/backups'
-  TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
-  if [ -f '${NAS_DEPLOY_PATH}/data/prod/quiz-platform.sqlite' ]; then
-    cp '${NAS_DEPLOY_PATH}/data/prod/quiz-platform.sqlite' '${NAS_DEPLOY_PATH}/backups/quiz-prod-\${TIMESTAMP}.sqlite'
-    echo '💾 Backup SQLite Produção criado em backups/quiz-prod-'\"\${TIMESTAMP}\"'.sqlite'
-  fi
-"
-
-# 2. Sincronizar ficheiros do projeto via rsync (ou tar-over-ssh caso rsync falhe)
-rsync -avz --delete \
-  --exclude 'node_modules' \
-  --exclude 'dist' \
-  --exclude '.astro' \
-  --exclude '.git' \
-  --exclude '.slido-data' \
-  --exclude 'data' \
-  --exclude 'backups' \
-  --exclude '.env' \
-  -e "ssh -p ${NAS_SSH_PORT}" \
-  ./ "${NAS_USER}@${NAS_HOST}:${NAS_DEPLOY_PATH}/"
-
-# Enviar .env para o NAS
-if [ -f ".env" ]; then
-  scp -P "${NAS_SSH_PORT}" .env "${NAS_USER}@${NAS_HOST}:${NAS_DEPLOY_PATH}/.env"
-fi
-
-# 3. Construir e arrancar os contentores Docker no NAS (incluindo /usr/local/bin no PATH do Synology)
 ssh -p "${NAS_SSH_PORT}" "${NAS_USER}@${NAS_HOST}" "
   export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:\$PATH
-  cd '${NAS_DEPLOY_PATH}'
-  if docker compose version >/dev/null 2>&1; then
-    COMPOSE_CMD='docker compose'
-  elif command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE_CMD='docker-compose'
+  if [ ! -d '${NAS_DEPLOY_PATH}/.git' ]; then
+    rm -rf '${NAS_DEPLOY_PATH}'
+    git clone '${REPO_URL}' '${NAS_DEPLOY_PATH}'
   else
-    echo '❌ Docker Compose não encontrado no PATH do NAS.'
-    exit 1
+    cd '${NAS_DEPLOY_PATH}'
+    git fetch origin main
+    git reset --hard origin/main
   fi
-
-  if [ '${TARGET_ENV}' = 'staging' ]; then
-    \$COMPOSE_CMD --profile staging up -d --build slidofnac-staging
-  elif [ '${TARGET_ENV}' = 'prod' ]; then
-    \$COMPOSE_CMD up -d --build slidofnac-prod
+  cd '${NAS_DEPLOY_PATH}'
+  mkdir -p data/prod data/staging backups logs
+  if [ ! -f .env ] && [ -f .env.example ]; then
+    cp .env.example .env
+  fi
+  if docker info >/dev/null 2>&1; then
+    bash scripts/update-nas.sh --force
+  elif sudo -n docker info >/dev/null 2>&1; then
+    sudo bash scripts/update-nas.sh --force
   else
-    \$COMPOSE_CMD --profile staging up -d --build
+    echo '✅ Repositório sincronizado em ${NAS_DEPLOY_PATH}!'
+    echo 'ℹ️  Para compilar/subir os contentores Docker no Synology DSM:'
+    echo '   - No Agendador de Tarefas do DSM (como root): bash /volume1/docker/slidofnac/scripts/update-nas.sh --force'
+    echo '   - Ou via SSH: cd /volume1/docker/slidofnac && sudo bash scripts/update-nas.sh --force'
   fi
 "
-
-echo "✅ Deploy no NAS concluído com sucesso!"
-echo "🔗 Produção: http://${NAS_HOST}:${PROD_PORT}"
-echo "🔗 Staging:  http://${NAS_HOST}:${STAGING_PORT}"

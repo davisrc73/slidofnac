@@ -1,4 +1,4 @@
-# docker-compose.yml — Deploy NAS (Produção: 4341 e Staging: 4342)
+# docker-compose.yml — Deploy Synology NAS (Produção: 4341 e Staging: 4342)
 services:
   slidofnac-prod:
     container_name: slidofnac-prod
@@ -23,8 +23,6 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    profiles:
-      - staging
     ports:
       - "${STAGING_PORT:-4342}:4321"
     environment:
