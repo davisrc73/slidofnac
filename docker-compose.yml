@@ -1,0 +1,37 @@
+# docker-compose.yml — Deploy NAS (Produção e Staging)
+services:
+  slidofnac-prod:
+    container_name: slidofnac-prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PROD_PORT:-4321}:4321"
+    environment:
+      - NODE_ENV=production
+      - APP_ENV=production
+      - PORT=4321
+      - HOST=0.0.0.0
+      - PUBLIC_BASE_URL=${PROD_PUBLIC_URL:-}
+    volumes:
+      - ./data/prod:/app/.slido-data
+
+  slidofnac-staging:
+    container_name: slidofnac-staging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles:
+      - staging
+    ports:
+      - "${STAGING_PORT:-4322}:4321"
+    environment:
+      - NODE_ENV=production
+      - APP_ENV=staging
+      - PORT=4321
+      - HOST=0.0.0.0
+      - PUBLIC_BASE_URL=${STAGING_PUBLIC_URL:-}
+    volumes:
+      - ./data/staging:/app/.slido-data

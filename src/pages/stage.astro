@@ -1,0 +1,898 @@
+---
+// src/pages/stage.astro — Ecrã de Palco / Projetor Sincronizado em Tempo Real (8 Modelos Slido + Lojas FNAC)
+---
+<html lang="pt-PT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Palco Ao Vivo — Plataforma Interativa FNAC</title>
+    <style>
+        .slido-outer-gradient {
+            background: linear-gradient(180deg, #C81908 0%, #D93805 32%, #EB7802 68%, #F8C600 100%);
+        }
+        @keyframes pop-in {
+            0% { opacity: 0; transform: scale(0.95) translateY(8px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-pop-in {
+            animation: pop-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="slido-outer-gradient min-h-screen flex flex-col px-4 pb-5 pt-3 font-sans text-[#141414] select-none overflow-x-hidden relative">
+
+    <!-- Canvas de Confetti -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-40"></canvas>
+
+    <!-- Topo Vermelho -->
+    <div class="w-full flex items-center justify-between px-2 pb-2.5 text-white z-20">
+        <div class="flex items-center gap-2.5 text-lg font-medium tracking-tight opacity-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="9" r="5"></circle>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.5 13.5L8 21l4-2 4 2-1.5-7.5"></path>
+            </svg>
+            <span id="stage-top-label">Sessão Interativa em Tempo Real</span>
+        </div>
+
+        <!-- Barra de atalhos discreta (oculta-se após 3s sem mexer o rato) -->
+        <div id="floating-controls" class="flex items-center gap-2 text-xs transition-opacity duration-500 opacity-100">
+            <button id="btn-stage-lobby" type="button" class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md cursor-pointer">
+                📱 QR Lobby
+            </button>
+            <button id="btn-stage-leaderboard" type="button" class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md cursor-pointer">
+                🏆 Individual
+            </button>
+            <button id="btn-stage-teams" type="button" class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md cursor-pointer">
+                🏪 Lojas FNAC
+            </button>
+            <a href="/vencedores" class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md">
+                🎬 Top 10 Countdown
+            </a>
+            <button id="btn-fullscreen" type="button" class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md cursor-pointer">
+                ⛶ Ecrã Inteiro
+            </button>
+            <a href="/admin" target="_blank" class="bg-black/40 hover:bg-black/60 text-[#FFCC00] px-3 py-1 rounded-md font-bold">
+                ⚙️ Comando Host ↗
+            </a>
+        </div>
+    </div>
+
+    <!-- Cartão Principal de Palco (#FAF8F5) -->
+    <main class="flex-1 w-full bg-[#FAF8F5] rounded-lg shadow-xl flex flex-col items-center justify-center px-8 py-7 relative overflow-hidden">
+
+        <!-- VISTA A: LOBBY COM QR CODE GIGANTE + PARTICIPANTES -->
+        <section id="view-lobby" class="hidden w-full max-w-5xl grid-cols-1 md:grid-cols-12 gap-8 items-center my-auto">
+            <!-- QR Code Card -->
+            <div class="md:col-span-5 bg-white p-6 rounded-2xl shadow-md border border-gray-200 flex flex-col items-center text-center">
+                <p class="text-xs font-bold uppercase tracking-widest text-[#D93805] mb-2">
+                    Aponte a câmara do telemóvel
+                </p>
+                <div id="stage-qr-box" class="w-56 h-56 md:w-64 md:h-64 p-2 bg-white rounded-xl border border-gray-100"></div>
+                <div class="mt-4 w-full bg-[#FAF8F5] rounded-xl p-3 border border-gray-200">
+                    <p class="text-xs text-gray-500">Ou aceda no browser do telemóvel a:</p>
+                    <p id="stage-join-url" class="text-base font-extrabold text-[#111111] break-all mt-0.5"></p>
+                </div>
+            </div>
+
+            <!-- Info da Sessão e Participantes Ligados -->
+            <div class="md:col-span-7 flex flex-col justify-between gap-6">
+                <div>
+                    <div class="inline-flex items-center gap-2 bg-[#FFCC00] text-[#111111] px-3.5 py-1 rounded-full text-sm font-black uppercase tracking-wider mb-3">
+                        <span>Código:</span>
+                        <span id="stage-quiz-code">#FNAC26</span>
+                    </div>
+                    <h1 id="stage-quiz-title" class="text-4xl md:text-5xl font-extrabold tracking-tight text-[#111111] leading-tight">
+                        Convenção Comercial Natal 2026
+                    </h1>
+                    <p id="stage-quiz-desc" class="text-lg text-gray-600 mt-2">
+                        Entre com o seu telemóvel para participar em tempo real!
+                    </p>
+                </div>
+
+                <!-- Contador de Participantes em Sala -->
+                <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-bold uppercase tracking-wider text-gray-500">
+                            Participantes ligados em sala
+                        </span>
+                        <span id="stage-participants-count" class="text-3xl font-black text-[#D93805]">
+                            0
+                        </span>
+                    </div>
+                    <div id="stage-participants-pills" class="flex flex-wrap gap-2 max-h-40 overflow-hidden">
+                        <span class="text-sm text-gray-400">A aguardar a entrada dos participantes...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA B: ATIVIDADE ATIVA (8 MODELOS: QUIZ, POLL, WORDCLOUD, OPENTEXT, IDEAS, RANKING, RATING, SURVEY) -->
+        <section id="view-question" class="hidden w-full max-w-6xl flex-col justify-between h-full my-auto gap-5">
+            <!-- Topo da Atividade: Tipo + Número + Respostas Recebidas + Mini QR + Cronómetro -->
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <span id="stage-q-badge" class="bg-[#111111] text-[#FFCC00] px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-wider">
+                        Atividade 1 / 8
+                    </span>
+                    <span id="stage-q-type-pill" class="bg-white border border-gray-200 text-[#111111] px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider">
+                        🏆 Quiz
+                    </span>
+                    <span id="stage-q-2x-pill" class="hidden bg-gradient-to-r from-[#C81908] to-[#EB7802] text-white px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow-sm animate-pulse">
+                        🔥 2x Pontos Duplos
+                    </span>
+                    <span id="stage-q-votes" class="bg-white border border-gray-200 text-gray-700 px-4 py-1.5 rounded-full text-sm font-bold">
+                        0 respostas
+                    </span>
+                </div>
+
+                <!-- Cronómetro Redondo -->
+                <div id="stage-q-timer-pill" class="flex items-center gap-2 bg-[#FFCC00] text-[#111111] px-5 py-2 rounded-full text-2xl font-black tabular-nums shadow-sm">
+                    <span>⏱️</span>
+                    <span id="stage-q-timer">20s</span>
+                </div>
+            </div>
+
+            <!-- Enunciado + Imagem Opcional (com efeito Blur / Zoom Reveal) -->
+            <div class="flex flex-col md:flex-row items-center gap-6 my-1">
+                <div id="stage-q-image-wrap" class="hidden w-52 h-40 md:w-64 md:h-44 rounded-2xl overflow-hidden border-2 border-gray-200 shadow-md bg-white shrink-0 relative">
+                    <img id="stage-q-image" src="" alt="Imagem da pergunta" class="w-full h-full object-cover transition-all duration-700" />
+                </div>
+                <h2 id="stage-q-text" class="text-3xl md:text-5xl font-normal text-[#111111] leading-tight flex-1">
+                    Enunciado da atividade...
+                </h2>
+            </div>
+
+            <!-- Área Dinâmica de Visualização dos 8 Modelos -->
+            <div id="stage-q-body" class="w-full flex-1 flex flex-col justify-center my-auto min-h-[280px]"></div>
+        </section>
+
+        <!-- VISTA C: TABELA DE CLASSIFICAÇÃO (INDIVIDUAL OU BATALHA DE LOJAS FNAC) -->
+        <section id="view-leaderboard" class="hidden w-full max-w-4xl flex-col items-center my-auto">
+            <div class="flex flex-col items-center mb-6 text-center">
+                <div id="stage-lb-emoji" class="text-7xl md:text-8xl mb-3 drop-shadow-md leading-none">🏆</div>
+                <h1 id="stage-lb-heading" class="text-4xl md:text-5xl font-normal tracking-tight text-[#111111]">
+                    Tabela de classificação
+                </h1>
+                <!-- Seletor Rápido Individual vs Lojas FNAC -->
+                <div class="mt-3 inline-flex bg-black/5 p-1 rounded-xl border border-gray-200/80">
+                    <button id="tab-lb-individual" type="button" class="px-4 py-1.5 rounded-lg text-xs font-extrabold bg-[#111111] text-[#FFCC00] transition cursor-pointer">
+                        👤 Top Individual
+                    </button>
+                    <button id="tab-lb-teams" type="button" class="px-4 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:text-black transition cursor-pointer">
+                        🏪 Batalha de Lojas FNAC
+                    </button>
+                </div>
+            </div>
+
+            <div id="stage-lb-rows" class="w-full flex flex-col gap-2.5"></div>
+        </section>
+    </main>
+
+    <!-- Botão '>' no Canto Inferior Esquerdo para o Apresentador Avançar Passo a Passo -->
+    <button
+        id="btn-next-corner"
+        type="button"
+        class="fixed bottom-8 left-4 z-30 bg-[#1B1B1B] hover:bg-black text-white w-14 h-12 rounded-r-xl rounded-l-md shadow-lg flex items-center justify-center transition cursor-pointer"
+        title="Avançar para o próximo passo (Clique ou Espaço)"
+    >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+        </svg>
+    </button>
+
+    <script>
+        let cursorTimer: ReturnType<typeof setTimeout>;
+        const floatingControls = document.getElementById('floating-controls');
+
+        function wakeUi() {
+            document.body.classList.remove('cursor-none');
+            if (floatingControls) floatingControls.style.opacity = '1';
+            clearTimeout(cursorTimer);
+            cursorTimer = setTimeout(() => {
+                document.body.classList.add('cursor-none');
+                if (floatingControls) floatingControls.style.opacity = '0';
+            }, 3000);
+        }
+
+        document.addEventListener('mousemove', wakeUi);
+        wakeUi();
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+        document.getElementById('btn-fullscreen')?.addEventListener('click', toggleFullScreen);
+
+        const checkIcon = `<svg class="w-5 h-5 inline mr-2 shrink-0 text-[#111111]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        const stopwatchIcon = `<svg class="w-5 h-5 inline mr-2 shrink-0 text-[#111111]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4l2.5 2.5M10 2h4M12 2v3"></path></svg>`;
+
+        const TYPE_LABELS: Record<string, string> = {
+            quiz: '🏆 Quiz Competitivo',
+            boolean: '🏆 Verdadeiro / Falso',
+            poll: '📊 Sondagem (Multiple Choice)',
+            wordcloud: '☁️ Nuvem de Palavras (Word Cloud)',
+            opentext: '💬 Texto Aberto (Open Text)',
+            ideas: '💡 Ideias & Votação (Ideas)',
+            ranking: '🏅 Ordenação (Ranking)',
+            rating: '⭐ Avaliação (Rating)',
+            survey: '📋 Questionário (Survey)',
+        };
+
+        let latestState: any = null;
+        let lastQrUrl = '';
+
+        const viewLobby = document.getElementById('view-lobby');
+        const viewQuestion = document.getElementById('view-question');
+        const viewLeaderboard = document.getElementById('view-leaderboard');
+
+        function showStageSection(target: HTMLElement | null, displayType = 'flex') {
+            [viewLobby, viewQuestion, viewLeaderboard].forEach((el) => {
+                if (!el) return;
+                if (el === target) {
+                    el.classList.remove('hidden');
+                    el.classList.add(displayType);
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex', 'grid');
+                }
+            });
+        }
+
+        function escapeHtml(str: string) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function renderQuestionBody(q: any, stats: any, isReveal: boolean) {
+            const qBody = document.getElementById('stage-q-body');
+            if (!qBody) return;
+
+            const qType = q.type || 'quiz';
+            const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+            // 1. QUIZ ou POLL (Multiple Choice)
+            if (qType === 'quiz' || qType === 'boolean' || qType === 'poll') {
+                const counts = stats?.optionCounts || [];
+                const pcts = stats?.optionPercentages || [];
+                const showBars = qType === 'poll' || isReveal; // Poll mostra barras em tempo real; Quiz mostra no Reveal
+
+                qBody.innerHTML = `<div class="w-full flex flex-col gap-3.5">${(q.options || [])
+                    .map((optText: string, idx: number) => {
+                        const isCorrect = (qType === 'quiz' || qType === 'boolean') && idx === q.correctIndex;
+                        const pct = pcts[idx] || 0;
+                        const cnt = counts[idx] || 0;
+
+                        if (!showBars) {
+                            return `
+                                <div class="flex items-center justify-between p-5 rounded-xl bg-white border border-gray-200/90 shadow-sm text-2xl text-[#111111]">
+                                    <div class="flex items-center gap-4">
+                                        <span class="w-10 h-10 rounded-lg bg-[#FAF8F5] border border-gray-200 flex items-center justify-center font-bold text-lg">
+                                            ${letters[idx] || idx + 1}
+                                        </span>
+                                        <span>${escapeHtml(optText)}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        // Modo com barras de percentagem (em tempo real para Poll, ou Reveal para Quiz)
+                        let borderClass = 'border border-gray-200 bg-white';
+                        let barColor = 'bg-[#2563EB]/20';
+                        let badgeClass = 'bg-[#2563EB] text-white';
+
+                        if (qType === 'quiz' || qType === 'boolean') {
+                            borderClass = isCorrect
+                                ? 'border-2 border-emerald-600 bg-emerald-50/70 font-bold'
+                                : 'border border-gray-200 bg-white opacity-75';
+                            barColor = isCorrect ? 'bg-emerald-500/25' : 'bg-gray-200/70';
+                            badgeClass = isCorrect ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700';
+                        }
+
+                        return `
+                            <div class="relative overflow-hidden rounded-xl ${borderClass} p-5 text-2xl text-[#111111] transition-all">
+                                <div class="absolute inset-y-0 left-0 ${barColor} transition-all duration-500" style="width: ${pct}%;"></div>
+                                <div class="relative z-10 flex items-center justify-between gap-4">
+                                    <div class="flex items-center gap-4">
+                                        <span class="w-10 h-10 rounded-lg ${badgeClass} flex items-center justify-center font-bold text-lg shrink-0">
+                                            ${isCorrect && isReveal ? '✓' : letters[idx] || idx + 1}
+                                        </span>
+                                        <span>${escapeHtml(optText)}</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 text-xl font-bold shrink-0 tabular-nums">
+                                        <span class="text-sm text-gray-500">(${cnt})</span>
+                                        <span>${pct}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    })
+                    .join('')}</div>`;
+                return;
+            }
+
+            // 2. WORD CLOUD (Nuvem de Palavras Dinâmica)
+            if (qType === 'wordcloud') {
+                const words = stats?.words || [];
+                if (words.length === 0) {
+                    qBody.innerHTML = `
+                        <div class="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400 text-xl">
+                            ☁️ A aguardar o envio de palavras pelos participantes nos telemóveis...
+                        </div>
+                    `;
+                    return;
+                }
+                const maxCount = Math.max(...words.map((w: any) => w.count), 1);
+                const palette = [
+                    'bg-[#6D28D9] text-white',
+                    'bg-[#C81908] text-white',
+                    'bg-[#D93805] text-white',
+                    'bg-[#FFCC00] text-[#111111]',
+                    'bg-[#7C3AED]/15 text-[#5B21B6] border border-[#7C3AED]/30',
+                    'bg-[#111111] text-[#FFCC00]',
+                ];
+                qBody.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm flex flex-wrap items-center justify-center gap-4 min-h-[280px]">
+                        ${words
+                            .map((w: any, i: number) => {
+                                const ratio = w.count / maxCount;
+                                const fontSizeRem = (1.1 + ratio * 2.2).toFixed(2);
+                                const padClass = ratio > 0.6 ? 'px-6 py-3' : 'px-4 py-2';
+                                const colorClass = palette[i % palette.length];
+                                return `
+                                    <span
+                                        class="${colorClass} ${padClass} rounded-2xl font-extrabold shadow-sm transition-all duration-500 inline-flex items-center gap-2"
+                                        style="font-size: ${fontSizeRem}rem; line-height: 1.15;"
+                                    >
+                                        <span>${escapeHtml(w.text)}</span>
+                                        ${w.count > 1 ? `<sup class="text-xs opacity-80 font-black">×${w.count}</sup>` : ''}
+                                    </span>
+                                `;
+                            })
+                            .join('')}
+                    </div>
+                `;
+                return;
+            }
+
+            // 3. OPEN TEXT (Mural de Comentários em Tempo Real)
+            if (qType === 'opentext') {
+                const entries = stats?.entries || [];
+                if (entries.length === 0) {
+                    qBody.innerHTML = `
+                        <div class="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400 text-xl">
+                            💬 A aguardar comentários de texto aberto...
+                        </div>
+                    `;
+                    return;
+                }
+                qBody.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[420px] overflow-y-auto pr-1">
+                        ${entries
+                            .map(
+                                (item: any, idx: number) => `
+                                <div class="p-5 rounded-2xl border ${
+                                    idx === 0
+                                        ? 'bg-[#0D9488] text-white border-[#0D9488] shadow-md'
+                                        : 'bg-white text-[#111111] border-gray-200 shadow-sm'
+                                } flex flex-col justify-between gap-3">
+                                    <p class="text-lg font-medium leading-snug break-words">"${escapeHtml(item.text)}"</p>
+                                    <div class="flex items-center justify-between text-xs ${
+                                        idx === 0 ? 'text-teal-100' : 'text-gray-400'
+                                    } font-bold pt-2 border-t ${idx === 0 ? 'border-white/20' : 'border-gray-100'}">
+                                        <span>👤 ${escapeHtml(item.participantName)}</span>
+                                        ${item.teamName ? `<span>🏪 ${escapeHtml(item.teamName)}</span>` : ''}
+                                    </div>
+                                </div>
+                            `
+                            )
+                            .join('')}
+                    </div>
+                `;
+                return;
+            }
+
+            // 4. IDEAS (Brainstorming + Upvotes 👍 em Tempo Real)
+            if (qType === 'ideas') {
+                const ideas = stats?.ideas || [];
+                if (ideas.length === 0) {
+                    qBody.innerHTML = `
+                        <div class="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400 text-xl">
+                            💡 A aguardar sugestões e votos da audiência...
+                        </div>
+                    `;
+                    return;
+                }
+                qBody.innerHTML = `
+                    <div class="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1">
+                        ${ideas
+                            .slice(0, 8)
+                            .map(
+                                (idea: any, idx: number) => `
+                                <div class="p-4 rounded-2xl border ${
+                                    idx === 0
+                                        ? 'bg-[#65A30D] text-white border-[#65A30D] shadow-md'
+                                        : 'bg-white text-[#111111] border-gray-200 shadow-sm'
+                                } flex items-center justify-between gap-4">
+                                    <div class="min-w-0">
+                                        <p class="text-xl font-bold leading-snug break-words">${escapeHtml(idea.text)}</p>
+                                        <p class="text-xs ${idx === 0 ? 'text-lime-100' : 'text-gray-400'} mt-1 font-semibold">
+                                            Sugerido por ${escapeHtml(idea.authorName)} ${idea.teamName ? `• ${escapeHtml(idea.teamName)}` : ''}
+                                        </p>
+                                    </div>
+                                    <div class="px-4 py-2 rounded-xl ${
+                                        idx === 0 ? 'bg-black/25 text-white' : 'bg-lime-50 text-lime-900 border border-lime-200'
+                                    } font-black text-xl shrink-0 flex items-center gap-2 tabular-nums">
+                                        <span>👍</span>
+                                        <span>${idea.votes}</span>
+                                    </div>
+                                </div>
+                            `
+                            )
+                            .join('')}
+                    </div>
+                `;
+                return;
+            }
+
+            // 5. RANKING (Ordenação de Preferência com Barras Cor-de-Rosa Slido)
+            if (qType === 'ranking') {
+                const ranked = stats?.rankedItems || [];
+                qBody.innerHTML = `
+                    <div class="w-full flex flex-col gap-3.5">
+                        ${ranked
+                            .map(
+                                (item: any, idx: number) => `
+                                <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-5 text-2xl text-[#111111] shadow-sm">
+                                    <div class="absolute inset-y-0 left-0 bg-[#DB2777]/20 transition-all duration-700" style="width: ${item.percentage}%;"></div>
+                                    <div class="relative z-10 flex items-center justify-between gap-4">
+                                        <div class="flex items-center gap-4">
+                                            <span class="w-10 h-10 rounded-lg ${
+                                                idx === 0 ? 'bg-[#DB2777] text-white' : 'bg-pink-50 text-[#DB2777] border border-pink-200'
+                                            } flex items-center justify-center font-black text-lg shrink-0">
+                                                #${idx + 1}
+                                            </span>
+                                            <span class="${idx === 0 ? 'font-bold' : ''}">${escapeHtml(item.text)}</span>
+                                        </div>
+                                        <div class="flex items-center gap-3 text-lg font-bold text-[#DB2777] shrink-0 tabular-nums">
+                                            <span>${item.score} pts</span>
+                                            <span class="text-sm text-gray-400">(${item.percentage}%)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `
+                            )
+                            .join('')}
+                    </div>
+                `;
+                return;
+            }
+
+            // 6. RATING (Média Estrelas + Gráfico de Barras Verticais estilo Slido)
+            if (qType === 'rating') {
+                const maxStars = stats?.maxStars || 5;
+                const avg = stats?.average || 0;
+                const distCounts = stats?.distributionCounts || [];
+                const distPcts = stats?.distributionPercentages || [];
+
+                qBody.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+                        <div class="md:col-span-5 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-gray-100 pb-6 md:pb-0 md:pr-6">
+                            <span class="text-sm font-bold uppercase tracking-widest text-gray-400 mb-2">Média Global</span>
+                            <div class="text-6xl md:text-7xl font-black text-[#111111] flex items-center gap-3 tabular-nums">
+                                <span>${avg.toFixed(1)}</span>
+                                <span class="text-[#EAB308]">★</span>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-2 font-semibold">Escala de 1 a ${maxStars} estrelas</p>
+                        </div>
+
+                        <div class="md:col-span-7 flex items-end justify-around gap-4 h-52 pt-6 px-4">
+                            ${Array.from({ length: maxStars }, (_, i) => {
+                                const starNum = i + 1;
+                                const pct = distPcts[i] || 0;
+                                const cnt = distCounts[i] || 0;
+                                const isHighest = pct > 0 && pct === Math.max(...distPcts);
+                                const barBg = isHighest ? 'bg-[#EAB308]' : 'bg-gray-200';
+                                const heightPx = Math.max(12, Math.round((pct / 100) * 140));
+                                return `
+                                    <div class="flex-1 flex flex-col items-center gap-2">
+                                        <span class="text-xs font-bold text-gray-600 tabular-nums">${pct}% (${cnt})</span>
+                                        <div class="w-full max-w-[56px] bg-gray-100 rounded-t-xl flex items-end overflow-hidden" style="height: 140px;">
+                                            <div class="w-full ${barBg} rounded-t-xl transition-all duration-700" style="height: ${heightPx}px;"></div>
+                                        </div>
+                                        <span class="text-sm font-extrabold text-[#111111]">${starNum} ★</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 7. SURVEY (Resumo Multi-Pergunta em Grelha)
+            if (qType === 'survey') {
+                const results = stats?.surveyResults || [];
+                qBody.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[420px] overflow-y-auto pr-1">
+                        ${results
+                            .map((sub: any, idx: number) => {
+                                if (sub.type === 'rating') {
+                                    return `
+                                        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex items-center justify-between">
+                                            <div>
+                                                <span class="text-xs font-bold uppercase text-gray-400">Sub-pergunta ${idx + 1} • Rating</span>
+                                                <h4 class="font-bold text-lg text-[#111111] mt-0.5">${escapeHtml(sub.prompt)}</h4>
+                                            </div>
+                                            <div class="text-3xl font-black text-[#EAB308] shrink-0 tabular-nums">
+                                                ${Number(sub.average || 0).toFixed(1)} ★
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                if (sub.type === 'poll') {
+                                    const total = (sub.optionCounts || []).reduce((a: number, b: number) => a + b, 0) || 1;
+                                    return `
+                                        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-2">
+                                            <span class="text-xs font-bold uppercase text-gray-400">Sub-pergunta ${idx + 1} • Escolha</span>
+                                            <h4 class="font-bold text-base text-[#111111]">${escapeHtml(sub.prompt)}</h4>
+                                            <div class="flex flex-col gap-1.5 mt-1">
+                                                ${(sub.options || [])
+                                                    .map((o: string, oIdx: number) => {
+                                                        const c = sub.optionCounts?.[oIdx] || 0;
+                                                        const p = Math.round((c / total) * 100);
+                                                        return `
+                                                            <div class="text-xs flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded-lg">
+                                                                <span class="font-semibold">${escapeHtml(o)}</span>
+                                                                <span class="font-bold text-[#D93805]">${p}% (${c})</span>
+                                                            </div>
+                                                        `;
+                                                    })
+                                                    .join('')}
+                                            </div>
+                                        </div>
+                                    `;
+                                }
+                                return `
+                                    <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-2 md:col-span-2">
+                                        <span class="text-xs font-bold uppercase text-gray-400">Sub-pergunta ${idx + 1} • Comentários</span>
+                                        <h4 class="font-bold text-base text-[#111111]">${escapeHtml(sub.prompt)}</h4>
+                                        <div class="flex flex-wrap gap-2 mt-1">
+                                            ${
+                                                (sub.recentTexts || []).length === 0
+                                                    ? `<span class="text-xs text-gray-400">Sem respostas ainda...</span>`
+                                                    : (sub.recentTexts || [])
+                                                          .map(
+                                                              (t: string) =>
+                                                                  `<span class="px-3 py-1.5 rounded-xl bg-[#FAF8F5] border border-gray-200 text-xs font-medium">"${escapeHtml(t)}"</span>`
+                                                          )
+                                                          .join('')
+                                            }
+                                        </div>
+                                    </div>
+                                `;
+                            })
+                            .join('')}
+                    </div>
+                `;
+            }
+        }
+
+        function renderStage(state: any) {
+            latestState = state;
+            const topLabel = document.getElementById('stage-top-label');
+
+            if (state.status === 'lobby') {
+                if (topLabel) topLabel.textContent = state.activeQuiz?.title || 'Lobby da Sessão';
+                showStageSection(viewLobby, 'grid');
+
+                const qrBox = document.getElementById('stage-qr-box');
+                if (qrBox && state.qrSvg && state.joinUrl !== lastQrUrl) {
+                    lastQrUrl = state.joinUrl;
+                    qrBox.innerHTML = state.qrSvg;
+                }
+                const joinUrlEl = document.getElementById('stage-join-url');
+                if (joinUrlEl) joinUrlEl.textContent = state.joinUrl;
+
+                const codeEl = document.getElementById('stage-quiz-code');
+                const titleEl = document.getElementById('stage-quiz-title');
+                const descEl = document.getElementById('stage-quiz-desc');
+                if (codeEl && state.activeQuiz) codeEl.textContent = `#${state.activeQuiz.code}`;
+                if (titleEl && state.activeQuiz) titleEl.textContent = state.activeQuiz.title;
+                if (descEl && state.activeQuiz) {
+                    descEl.textContent =
+                        state.activeQuiz.description ||
+                        `${state.activeQuiz.totalQuestions} atividades interativas • Participe em direto no seu telemóvel`;
+                }
+
+                const pCount = document.getElementById('stage-participants-count');
+                const pPills = document.getElementById('stage-participants-pills');
+                if (pCount) pCount.textContent = String(state.participantsCount || 0);
+                if (pPills) {
+                    const list = state.participants || [];
+                    if (list.length === 0) {
+                        pPills.innerHTML = `<span class="text-sm text-gray-400">A aguardar a entrada dos participantes...</span>`;
+                    } else {
+                        pPills.innerHTML = list
+                            .map(
+                                (p: any) =>
+                                    `<span class="px-3 py-1 rounded-full bg-[#FAF8F5] border border-gray-200 text-sm font-semibold text-[#111111]">${escapeHtml(p.name)}${p.teamName ? ` <span class="text-xs text-[#D93805]">(${escapeHtml(p.teamName.replace('FNAC ', ''))})</span>` : ''}</span>`
+                            )
+                            .join('');
+                    }
+                }
+            } else if (state.status === 'question_open' || state.status === 'question_reveal') {
+                showStageSection(viewQuestion, 'flex');
+                const q = state.currentQuestion;
+                if (!q) return;
+
+                const isReveal = state.status === 'question_reveal';
+                const qType = q.type || 'quiz';
+
+                if (topLabel) {
+                    topLabel.textContent = `${TYPE_LABELS[qType] || 'Atividade'} — ${q.number} de ${q.total}`;
+                }
+
+                const qBadge = document.getElementById('stage-q-badge');
+                const qTypePill = document.getElementById('stage-q-type-pill');
+                const q2xPill = document.getElementById('stage-q-2x-pill');
+                const qVotes = document.getElementById('stage-q-votes');
+                const qTimer = document.getElementById('stage-q-timer');
+                const qTimerPill = document.getElementById('stage-q-timer-pill');
+                const qText = document.getElementById('stage-q-text');
+                const imgWrap = document.getElementById('stage-q-image-wrap');
+                const imgEl = document.getElementById('stage-q-image') as HTMLImageElement | null;
+
+                if (qBadge) qBadge.textContent = `Atividade ${q.number} / ${q.total}`;
+                if (qTypePill) qTypePill.textContent = TYPE_LABELS[qType] || qType;
+                if (q2xPill) {
+                    if ((qType === 'quiz' || qType === 'boolean') && Number(q.pointsMultiplier) > 1) {
+                        q2xPill.classList.remove('hidden');
+                    } else {
+                        q2xPill.classList.add('hidden');
+                    }
+                }
+                if (qVotes) {
+                    const totalAns = state.questionStats?.totalAnswers || 0;
+                    qVotes.textContent =
+                        totalAns === 1 ? '1 participação' : `${totalAns} participações`;
+                }
+                if (qText) qText.textContent = q.text;
+
+                // Imagem com suporte para Blur / Zoom Reveal progressivo
+                if (imgWrap && imgEl) {
+                    if (q.imageUrl) {
+                        imgWrap.classList.remove('hidden');
+                        imgEl.src = q.imageUrl;
+                        const totalMs = (q.timeLimitSec || 20) * 1000;
+                        const remRatio = isReveal ? 0 : Math.min(1, Math.max(0, (state.timeRemainingMs || 0) / totalMs));
+                        if (q.imageRevealMode === 'blur' && !isReveal) {
+                            const blurPx = (remRatio * 18).toFixed(1);
+                            imgEl.style.filter = `blur(${blurPx}px)`;
+                            imgEl.style.transform = 'scale(1.05)';
+                        } else if (q.imageRevealMode === 'zoom' && !isReveal) {
+                            const scaleVal = (1 + remRatio * 1.6).toFixed(2);
+                            imgEl.style.filter = 'none';
+                            imgEl.style.transform = `scale(${scaleVal})`;
+                        } else {
+                            imgEl.style.filter = 'none';
+                            imgEl.style.transform = 'scale(1)';
+                        }
+                    } else {
+                        imgWrap.classList.add('hidden');
+                    }
+                }
+
+                if (isReveal) {
+                    if (qTimer) qTimer.textContent = qType === 'quiz' || qType === 'boolean' ? 'Resposta Revelada' : 'Votação Encerrada';
+                    if (qTimerPill) {
+                        qTimerPill.className =
+                            'flex items-center gap-2 bg-emerald-600 text-white px-5 py-2 rounded-full text-lg font-extrabold shadow-sm';
+                    }
+                } else {
+                    const remSec = Math.ceil((state.timeRemainingMs || 0) / 1000);
+                    if (qTimer) qTimer.textContent = remSec > 0 ? `${remSec}s` : 'Ao Vivo';
+                    if (qTimerPill) {
+                        qTimerPill.className =
+                            remSec > 0 && remSec <= 5 && (qType === 'quiz' || qType === 'boolean')
+                                ? 'flex items-center gap-2 bg-[#C81908] text-white px-5 py-2 rounded-full text-2xl font-black tabular-nums shadow-sm animate-pulse'
+                                : 'flex items-center gap-2 bg-[#FFCC00] text-[#111111] px-5 py-2 rounded-full text-2xl font-black tabular-nums shadow-sm';
+                    }
+                }
+
+                renderQuestionBody(q, state.questionStats, isReveal);
+            } else {
+                // Leaderboard view (Individual ou Batalha de Lojas FNAC)
+                showStageSection(viewLeaderboard, 'flex');
+
+                const mode = state.leaderboardMode || 'individual';
+                const headingEl = document.getElementById('stage-lb-heading');
+                const emojiEl = document.getElementById('stage-lb-emoji');
+                const tabInd = document.getElementById('tab-lb-individual');
+                const tabTeams = document.getElementById('tab-lb-teams');
+                const rowsEl = document.getElementById('stage-lb-rows');
+                if (!rowsEl) return;
+
+                if (mode === 'teams') {
+                    if (topLabel) topLabel.textContent = 'Batalha de Lojas & Equipas FNAC';
+                    if (headingEl) headingEl.textContent = 'Classificação por Loja / Equipa FNAC';
+                    if (emojiEl) emojiEl.textContent = '🏪';
+                    if (tabTeams) tabTeams.className = 'px-4 py-1.5 rounded-lg text-xs font-extrabold bg-[#111111] text-[#FFCC00] transition cursor-pointer';
+                    if (tabInd) tabInd.className = 'px-4 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:text-black transition cursor-pointer';
+
+                    const teams = state.leaderboard?.teamStandings || [];
+                    if (teams.length === 0) {
+                        rowsEl.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-gray-400">Ainda sem pontuações por Loja/Equipa.</div>`;
+                        return;
+                    }
+                    rowsEl.innerHTML = teams
+                        .slice(0, 8)
+                        .map((t: any, idx: number) => {
+                            const position = idx + 1;
+                            const isFirst = position === 1;
+                            const rowClass = isFirst
+                                ? 'bg-[#FFCC00] text-[#111111]'
+                                : 'bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.03)]';
+                            return `
+                                <div class="flex items-center justify-between py-3.5 px-6 text-2xl rounded-md ${rowClass}">
+                                    <div class="flex items-center gap-4 min-w-0">
+                                        <span class="w-10 text-left font-normal">#${position}</span>
+                                        <span class="font-normal truncate">${escapeHtml(t.teamName)}</span>
+                                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-black/10 font-bold">${t.membersCount} colab.</span>
+                                    </div>
+                                    <div class="flex items-center gap-8 md:gap-12 shrink-0 font-normal tabular-nums">
+                                        <span class="text-base text-gray-700 font-semibold">Média: <strong>${t.avgScore}</strong> pts</span>
+                                        <span class="flex items-center w-28 justify-end">
+                                            ${checkIcon}
+                                            <span>${t.totalScore} pts</span>
+                                        </span>
+                                        <span class="flex items-center w-24 justify-end">
+                                            ${stopwatchIcon}
+                                            <span>${t.displayAvgTime}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            `;
+                        })
+                        .join('');
+                } else {
+                    if (topLabel) topLabel.textContent = 'Tabela de classificação';
+                    if (headingEl) headingEl.textContent = 'Tabela de classificação';
+                    if (emojiEl) emojiEl.textContent = '🏆';
+                    if (tabInd) tabInd.className = 'px-4 py-1.5 rounded-lg text-xs font-extrabold bg-[#111111] text-[#FFCC00] transition cursor-pointer';
+                    if (tabTeams) tabTeams.className = 'px-4 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:text-black transition cursor-pointer';
+
+                    const standings = state.leaderboard?.standings || [];
+                    const limit = state.leaderboard?.topLimit || 5;
+                    const topPlayers = standings.slice(0, limit);
+                    const isCompact = limit > 5;
+                    const pyClass = isCompact ? 'py-2.5 px-6 text-xl' : 'py-3.5 px-6 text-2xl';
+
+                    rowsEl.innerHTML = topPlayers
+                        .map((player: any, index: number) => {
+                            const position = index + 1;
+                            const isFirst = position === 1;
+                            const maxScore = player.maxScore || 12;
+                            const rowClass = isFirst
+                                ? 'bg-[#FFCC00] text-[#111111]'
+                                : 'bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.03)]';
+
+                            return `
+                                <div class="flex items-center justify-between ${pyClass} rounded-md ${rowClass}">
+                                    <div class="flex items-center gap-4 min-w-0">
+                                        <span class="w-10 text-left font-normal">#${position}</span>
+                                        <span class="font-normal truncate">${escapeHtml(player.name)}</span>
+                                        ${player.teamName ? `<span class="text-xs px-2 py-0.5 rounded bg-black/10 font-semibold shrink-0">${escapeHtml(player.teamName.replace('FNAC ', ''))}</span>` : ''}
+                                    </div>
+                                    <div class="flex items-center gap-10 md:gap-14 shrink-0 font-normal tabular-nums">
+                                        <span class="flex items-center w-28 justify-end">
+                                            ${checkIcon}
+                                            <span>${player.score}/${maxScore}</span>
+                                        </span>
+                                        <span class="flex items-center w-24 justify-end">
+                                            ${stopwatchIcon}
+                                            <span>${player.displayTime}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            `;
+                        })
+                        .join('');
+                }
+            }
+        }
+
+        // Avançar passo diretamente a partir do palco (botão '>' ou tecla Espaço)
+        async function advanceStageFlow() {
+            if (!latestState) return;
+            let payload: any = {};
+
+            const qType = latestState.currentQuestion?.type || 'quiz';
+            const isCompetitive = qType === 'quiz' || qType === 'boolean';
+
+            if (latestState.status === 'lobby') {
+                payload = { action: 'open_question', questionIndex: 0 };
+            } else if (latestState.status === 'question_open') {
+                payload = isCompetitive ? { action: 'reveal_answer' } : { action: 'next_question' };
+            } else if (latestState.status === 'question_reveal') {
+                payload = { action: 'next_question' };
+            } else {
+                window.location.href = '/vencedores';
+                return;
+            }
+
+            const res = await fetch('/api/live/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                renderStage(data);
+            }
+        }
+
+        async function switchLeaderboardMode(leaderboardMode: 'individual' | 'teams') {
+            const res = await fetch('/api/live/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'set_status', status: 'leaderboard', leaderboardMode }),
+            });
+            if (res.ok) renderStage(await res.json());
+        }
+
+        document.getElementById('btn-next-corner')?.addEventListener('click', advanceStageFlow);
+        document.getElementById('btn-stage-lobby')?.addEventListener('click', async () => {
+            const res = await fetch('/api/live/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'set_status', status: 'lobby' }),
+            });
+            if (res.ok) renderStage(await res.json());
+        });
+        document.getElementById('btn-stage-leaderboard')?.addEventListener('click', () =>
+            switchLeaderboardMode('individual')
+        );
+        document.getElementById('btn-stage-teams')?.addEventListener('click', () =>
+            switchLeaderboardMode('teams')
+        );
+        document.getElementById('tab-lb-individual')?.addEventListener('click', () =>
+            switchLeaderboardMode('individual')
+        );
+        document.getElementById('tab-lb-teams')?.addEventListener('click', () =>
+            switchLeaderboardMode('teams')
+        );
+
+        document.addEventListener('keydown', (e) => {
+            wakeUi();
+            if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'PageDown') {
+                e.preventDefault();
+                advanceStageFlow();
+            } else if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                toggleFullScreen();
+            }
+        });
+
+        async function pollStage() {
+            try {
+                const res = await fetch(`/api/live/state?t=${Date.now()}`, { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    renderStage(data);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        pollStage();
+        setInterval(pollStage, 1000);
+    </script>
+</body>
+</html>

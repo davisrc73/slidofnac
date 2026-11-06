@@ -1,0 +1,9 @@
+node_modules
+dist
+.astro
+.git
+.gitignore
+.slido-data
+.DS_Store
+.env
+npm-debug.log*

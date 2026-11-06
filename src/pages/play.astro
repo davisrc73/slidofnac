@@ -1,0 +1,969 @@
+---
+// src/pages/play.astro — Vista Mobile do Participante (Suporta os 8 Modelos Slido + Batalha de Lojas FNAC)
+---
+<html lang="pt-PT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Participar — FNAC Quiz & Live Polls</title>
+    <style>
+        .slido-outer-gradient {
+            background: linear-gradient(180deg, #C81908 0%, #D93805 32%, #EB7802 68%, #F8C600 100%);
+        }
+    </style>
+</head>
+<body class="slido-outer-gradient min-h-screen flex flex-col p-3 sm:p-5 font-sans text-[#141414] select-none">
+
+    <!-- Topo Mobile -->
+    <header class="w-full max-w-md mx-auto flex items-center justify-between text-white pb-3 px-1">
+        <div class="flex items-center gap-2">
+            <div class="bg-[#FFCC00] text-black font-black tracking-tighter text-base px-2.5 py-0.5 rounded uppercase">
+                fnac
+            </div>
+            <span id="header-quiz-code" class="text-xs font-bold bg-black/25 px-2.5 py-1 rounded-full tracking-wider">
+                #FNAC26
+            </span>
+        </div>
+
+        <div id="user-pill" class="hidden items-center gap-2 bg-black/25 px-3 py-1 rounded-full text-xs">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="user-pill-name" class="font-bold truncate max-w-[140px]"></span>
+            <button id="btn-change-user" type="button" class="underline opacity-80 hover:opacity-100 ml-1 cursor-pointer">
+                Sair
+            </button>
+        </div>
+    </header>
+
+    <!-- Cartão Principal Mobile -->
+    <main class="flex-1 w-full max-w-md mx-auto bg-[#FAF8F5] rounded-2xl shadow-2xl p-5 flex flex-col justify-between relative overflow-hidden">
+
+        <!-- ECRÃ 1: LOGIN / IDENTIFICAÇÃO + LOJA FNAC -->
+        <section id="screen-join" class="my-auto flex flex-col gap-4">
+            <div class="text-center">
+                <div class="text-5xl mb-2">👋</div>
+                <h1 class="text-2xl font-extrabold text-[#111111]">Entrar na Sessão</h1>
+                <p class="text-xs text-gray-500 mt-1">
+                    Identifique-se e escolha a sua Loja / Equipa FNAC para somar pontos no ranking individual e por loja.
+                </p>
+            </div>
+
+            <form id="form-join" class="flex flex-col gap-3 mt-1" autocomplete="off">
+                <div class="relative">
+                    <label for="input-name" class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                        O seu Nome e Apelido
+                    </label>
+                    <input
+                        id="input-name"
+                        type="text"
+                        required
+                        placeholder="Ex: Miguel Vilaça"
+                        class="w-full px-4 py-3 rounded-xl border-2 border-gray-300 text-base font-semibold focus:outline-none focus:border-[#D93805] bg-white"
+                    />
+                    <div
+                        id="roster-suggestions"
+                        class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto z-30 divide-y divide-gray-100"
+                    ></div>
+                </div>
+
+                <div>
+                    <label for="select-team" class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                        Loja / Direção FNAC (Batalha de Equipas)
+                    </label>
+                    <select
+                        id="select-team"
+                        class="w-full px-3.5 py-3 rounded-xl border-2 border-gray-300 text-sm font-semibold focus:outline-none focus:border-[#D93805] bg-white"
+                    >
+                        <option value="">Selecionar Loja / Equipa (Opcional)</option>
+                    </select>
+                </div>
+
+                <div id="join-error" class="hidden text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-lg"></div>
+
+                <button
+                    type="submit"
+                    class="w-full bg-[#111111] hover:bg-black text-[#FFCC00] font-extrabold text-base py-3.5 rounded-xl shadow-md transition active:scale-[0.99] cursor-pointer mt-1"
+                >
+                    Entrar Agora →
+                </button>
+            </form>
+        </section>
+
+        <!-- ECRÃ 2: LOBBY / SALA DE ESPERA -->
+        <section id="screen-lobby" class="hidden my-auto flex-col items-center text-center py-8 gap-4">
+            <div class="w-20 h-20 rounded-full bg-[#FFCC00]/25 flex items-center justify-center text-5xl animate-bounce">
+                🎯
+            </div>
+            <div>
+                <p class="text-xs font-bold uppercase tracking-widest text-[#D93805]">Ligado em Tempo Real</p>
+                <h2 id="lobby-greeting" class="text-2xl font-extrabold text-[#111111] mt-1">
+                    Olá! Estás dentro.
+                </h2>
+                <p id="lobby-team-badge" class="text-xs font-bold text-gray-500 mt-1"></p>
+                <p id="lobby-quiz-title" class="text-sm text-gray-600 font-medium mt-2 px-2"></p>
+            </div>
+
+            <div class="w-full bg-white rounded-xl p-4 border border-gray-200/80 shadow-sm mt-2">
+                <p class="text-xs text-gray-500">
+                    Olhe para o ecrã principal. A próxima atividade vai aparecer aqui automaticamente!
+                </p>
+            </div>
+        </section>
+
+        <!-- ECRÃ 3: ATIVIDADE ATIVA (TODOS OS 8 MODELOS SLIDO) -->
+        <section id="screen-question" class="hidden flex-1 flex-col justify-between gap-3">
+            <div>
+                <!-- Topo da Pergunta + Badge de Tipo + Barra de Tempo -->
+                <div class="flex items-center justify-between text-xs font-bold text-gray-500 mb-1.5">
+                    <div class="flex items-center gap-1.5">
+                        <span id="q-counter">1 / 5</span>
+                        <span id="q-type-pill" class="px-2 py-0.5 rounded bg-black/10 text-[#111111] text-[10px] uppercase font-black">
+                            QUIZ
+                        </span>
+                        <span id="q-2x-pill" class="hidden px-2 py-0.5 rounded bg-[#C81908] text-white text-[10px] uppercase font-black animate-pulse">
+                            🔥 2x PONTOS
+                        </span>
+                    </div>
+                    <span id="q-timer-text" class="text-[#D93805] font-extrabold tabular-nums text-sm">20s</span>
+                </div>
+                <div id="q-timer-bar-wrap" class="w-full h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
+                    <div
+                        id="q-timer-bar"
+                        class="h-full bg-gradient-to-r from-[#C81908] via-[#EB7802] to-[#FFCC00] transition-all duration-200"
+                        style="width: 100%;"
+                    ></div>
+                </div>
+
+                <!-- Imagem da Pergunta (com suporte a Blur / Zoom Reveal) -->
+                <div id="q-image-wrap" class="hidden w-full h-36 rounded-xl overflow-hidden bg-black/5 mb-3 border border-gray-200">
+                    <img id="q-image" src="" alt="Imagem da pergunta" class="w-full h-full object-contain transition-all duration-500" />
+                </div>
+
+                <!-- Enunciado -->
+                <h2 id="q-text" class="text-base sm:text-lg font-extrabold text-[#111111] leading-snug mb-2">
+                    A carregar...
+                </h2>
+            </div>
+
+            <!-- Área Dinâmica de Interação (Muda consoante os 8 modelos) -->
+            <div id="q-interaction-body" class="flex flex-col gap-2.5 my-auto overflow-y-auto max-h-[420px] pr-0.5"></div>
+
+            <!-- Banner de Confirmação -->
+            <div id="q-answered-banner" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                <p class="text-xs font-extrabold text-emerald-900" id="q-answered-title">
+                    ✅ Resposta registada!
+                </p>
+            </div>
+        </section>
+
+        <!-- ECRÃ 4: REVELAÇÃO DA RESPOSTA (PARA QUIZ COMPETITIVO) -->
+        <section id="screen-reveal" class="hidden my-auto flex-col items-center text-center py-6 gap-4">
+            <div id="reveal-icon" class="text-6xl">🎉</div>
+            <div>
+                <h2 id="reveal-title" class="text-2xl font-black text-[#111111]">Resultado</h2>
+                <p id="reveal-subtitle" class="text-sm text-gray-600 mt-1"></p>
+            </div>
+
+            <div class="w-full bg-white rounded-xl p-4 border border-gray-200 text-left">
+                <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Resposta Correta</p>
+                <p id="reveal-correct-option" class="text-base font-extrabold text-emerald-700 mt-0.5"></p>
+            </div>
+
+            <div id="reveal-my-stats" class="w-full bg-[#FFCC00]/20 border border-[#FFCC00] rounded-xl p-3.5 text-sm font-bold text-[#111111]">
+                A aguardar próxima atividade...
+            </div>
+        </section>
+
+        <!-- ECRÃ 5: CLASSIFICAÇÃO FINAL NO TELEMÓVEL -->
+        <section id="screen-leaderboard" class="hidden my-auto flex-col items-center text-center py-6 gap-4">
+            <div class="text-6xl">🏆</div>
+            <div>
+                <h2 class="text-2xl font-extrabold text-[#111111]">Tabela de Classificação</h2>
+                <p class="text-xs text-gray-500 mt-1">Consulte a classificação no ecrã de projeção!</p>
+            </div>
+
+            <div class="w-full bg-[#FFCC00] text-[#111111] rounded-2xl p-5 shadow-md">
+                <p class="text-xs font-bold uppercase tracking-wider opacity-75">A sua Classificação Individual</p>
+                <p id="my-final-rank" class="text-4xl font-black my-1">#—</p>
+                <p id="my-final-score" class="text-sm font-bold"></p>
+            </div>
+        </section>
+
+        <footer class="pt-2.5 mt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-400">
+            <span>Plataforma Interativa FNAC</span>
+            <span class="flex items-center gap-1 text-emerald-600 font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
+            </span>
+        </footer>
+    </main>
+
+    <script>
+        const STORAGE_KEY = 'fnac_quiz_participant_v2';
+        let participant: { id: string; name: string; teamName?: string } | null = null;
+        let currentQuestionOpenedClientPerf = 0;
+        let lastQuestionId = '';
+        let selectedIndexForCurrentQ: number | null = null;
+        let rankingCurrentOrder: number[] = [];
+        let teamsPopulated = false;
+
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('fnac_quiz_participant_v1');
+            if (saved) participant = JSON.parse(saved);
+        } catch (e) {}
+
+        const screenJoin = document.getElementById('screen-join');
+        const screenLobby = document.getElementById('screen-lobby');
+        const screenQuestion = document.getElementById('screen-question');
+        const screenReveal = document.getElementById('screen-reveal');
+        const screenLeaderboard = document.getElementById('screen-leaderboard');
+        const userPill = document.getElementById('user-pill');
+        const userPillName = document.getElementById('user-pill-name');
+
+        function showOnlyScreen(target: HTMLElement | null) {
+            [screenJoin, screenLobby, screenQuestion, screenReveal, screenLeaderboard].forEach((el) => {
+                if (!el) return;
+                if (el === target) {
+                    el.classList.remove('hidden');
+                    el.classList.add('flex');
+                } else {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
+            });
+        }
+
+        // Autocomplete do Nome
+        const inputName = document.getElementById('input-name') as HTMLInputElement | null;
+        const selectTeam = document.getElementById('select-team') as HTMLSelectElement | null;
+        const suggestionsBox = document.getElementById('roster-suggestions');
+        let rosterDebounce: ReturnType<typeof setTimeout>;
+
+        inputName?.addEventListener('input', () => {
+            clearTimeout(rosterDebounce);
+            const q = inputName.value.trim();
+            if (q.length < 2) {
+                suggestionsBox?.classList.add('hidden');
+                return;
+            }
+            rosterDebounce = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/live/roster?q=${encodeURIComponent(q)}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const list = data.results || [];
+                    if (!suggestionsBox) return;
+                    if (list.length === 0) {
+                        suggestionsBox.classList.add('hidden');
+                        return;
+                    }
+                    suggestionsBox.innerHTML = list
+                        .map(
+                            (r: any) => `
+                            <button
+                                type="button"
+                                data-roster-name="${r.name}"
+                                data-roster-team="${r.team_name || ''}"
+                                class="roster-item w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-amber-50 flex items-center justify-between cursor-pointer"
+                            >
+                                <span>${r.name}</span>
+                                <span class="text-[10px] text-gray-400 uppercase">${r.team_name || 'Selecionar'}</span>
+                            </button>
+                        `
+                        )
+                        .join('');
+                    suggestionsBox.classList.remove('hidden');
+
+                    document.querySelectorAll('.roster-item').forEach((btn) => {
+                        btn.addEventListener('click', () => {
+                            const el = btn as HTMLElement;
+                            if (inputName) inputName.value = el.dataset.rosterName || '';
+                            if (selectTeam && el.dataset.rosterTeam) {
+                                selectTeam.value = el.dataset.rosterTeam;
+                            }
+                            suggestionsBox.classList.add('hidden');
+                        });
+                    });
+                } catch (e) {}
+            }, 150);
+        });
+
+        document.getElementById('form-join')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nameVal = inputName?.value.trim() || '';
+            const teamVal = selectTeam?.value || '';
+            const errEl = document.getElementById('join-error');
+            if (!nameVal) return;
+
+            try {
+                const res = await fetch('/api/live/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        participantId: participant?.id || '',
+                        name: nameVal,
+                        teamName: teamVal,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    if (errEl) {
+                        errEl.textContent = data.error || 'Erro ao entrar.';
+                        errEl.classList.remove('hidden');
+                    }
+                    return;
+                }
+                participant = data.participant;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(participant));
+                errEl?.classList.add('hidden');
+                await pollLiveState();
+            } catch (err) {
+                if (errEl) {
+                    errEl.textContent = 'Erro de ligação ao servidor.';
+                    errEl.classList.remove('hidden');
+                }
+            }
+        });
+
+        document.getElementById('btn-change-user')?.addEventListener('click', () => {
+            if (inputName && participant) inputName.value = participant.name;
+            if (selectTeam && participant?.teamName) selectTeam.value = participant.teamName;
+            participant = null;
+            localStorage.removeItem(STORAGE_KEY);
+            userPill?.classList.add('hidden');
+            userPill?.classList.remove('flex');
+            showOnlyScreen(screenJoin);
+        });
+
+        function showConfirmationBanner(msg: string) {
+            const banner = document.getElementById('q-answered-banner');
+            const title = document.getElementById('q-answered-title');
+            if (banner && title) {
+                banner.classList.remove('hidden');
+                title.textContent = msg;
+            }
+        }
+
+        async function submitChoiceOrRating(questionId: string, idx: number, isRating = false) {
+            if (!participant) return;
+            selectedIndexForCurrentQ = idx;
+            const clientElapsedMs = Math.max(100, Math.round(performance.now() - currentQuestionOpenedClientPerf));
+
+            const res = await fetch('/api/live/answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    participantId: participant.id,
+                    questionId,
+                    selectedIndex: idx,
+                    clientElapsedMs,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showConfirmationBanner(
+                    isRating
+                        ? `✅ Avaliação de ${idx} ★ enviada!`
+                        : `✅ Resposta registada (${data.displayTime})!`
+                );
+            }
+        }
+
+        const TYPE_LABELS: Record<string, string> = {
+            quiz: '🏆 Quiz',
+            poll: '📊 Sondagem',
+            wordcloud: '☁️ Word Cloud',
+            opentext: '💬 Texto Aberto',
+            ideas: '💡 Ideias',
+            ranking: '🏅 Ranking',
+            rating: '⭐ Avaliação',
+            survey: '📋 Inquérito',
+        };
+
+        function renderInteractionBody(state: any) {
+            const q = state.currentQuestion;
+            const bodyEl = document.getElementById('q-interaction-body');
+            if (!q || !bodyEl) return;
+
+            const qType = q.type || 'quiz';
+            const isNewQuestion = q.id !== lastQuestionId;
+
+            if (isNewQuestion) {
+                lastQuestionId = q.id;
+                currentQuestionOpenedClientPerf = performance.now();
+                selectedIndexForCurrentQ = state.myAnswer ? state.myAnswer.selectedIndex : null;
+                document.getElementById('q-answered-banner')?.classList.add('hidden');
+
+                // Build UI for the specific question model
+                if (qType === 'quiz' || qType === 'poll') {
+                    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+                    bodyEl.innerHTML = (q.options || [])
+                        .map(
+                            (opt: string, idx: number) => `
+                            <button
+                                type="button"
+                                data-idx="${idx}"
+                                class="opt-btn w-full text-left p-3.5 rounded-xl border-2 border-gray-200 bg-white text-[#111111] font-semibold text-sm sm:text-base shadow-sm flex items-center gap-3 transition cursor-pointer"
+                            >
+                                <span class="w-8 h-8 rounded-lg bg-black/10 flex items-center justify-center font-black text-xs shrink-0">
+                                    ${letters[idx] || idx + 1}
+                                </span>
+                                <span class="leading-snug">${opt}</span>
+                            </button>
+                        `
+                        )
+                        .join('');
+
+                    document.querySelectorAll('.opt-btn').forEach((btn) => {
+                        btn.addEventListener('click', () => {
+                            const idx = Number((btn as HTMLElement).dataset.idx);
+                            submitChoiceOrRating(q.id, idx, false);
+                            updateOptionButtonsHighlight();
+                        });
+                    });
+                } else if (qType === 'wordcloud' || qType === 'opentext') {
+                    const isWord = qType === 'wordcloud';
+                    bodyEl.innerHTML = `
+                        <form id="form-text-submit" class="flex flex-col gap-2.5">
+                            ${
+                                isWord
+                                    ? `<input id="inp-text-ans" type="text" maxlength="40" required placeholder="Escreva 1 ou 2 palavras..." class="w-full px-4 py-3.5 rounded-xl border-2 border-gray-300 text-base font-bold bg-white focus:outline-none focus:border-[#D93805]" />`
+                                    : `<textarea id="inp-text-ans" rows="3" maxlength="280" required placeholder="Escreva aqui o seu comentário ou resposta..." class="w-full p-3.5 rounded-xl border-2 border-gray-300 text-sm font-medium bg-white focus:outline-none focus:border-[#D93805]"></textarea>`
+                            }
+                            <button type="submit" class="w-full bg-[#111111] text-[#FFCC00] font-extrabold py-3 rounded-xl text-sm shadow cursor-pointer">
+                                Enviar para o Ecrã →
+                            </button>
+                        </form>
+                    `;
+
+                    document.getElementById('form-text-submit')?.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const inp = document.getElementById('inp-text-ans') as HTMLInputElement | null;
+                        const val = inp?.value.trim() || '';
+                        if (!val || !participant) return;
+                        const res = await fetch('/api/live/answer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                participantId: participant.id,
+                                questionId: q.id,
+                                responseText: val,
+                            }),
+                        });
+                        if (res.ok && inp) {
+                            inp.value = '';
+                            showConfirmationBanner('✅ Enviado para o ecrã! Pode enviar mais se quiser.');
+                        }
+                    });
+                } else if (qType === 'ideas') {
+                    bodyEl.innerHTML = `
+                        <form id="form-idea-submit" class="flex gap-2 mb-2">
+                            <input id="inp-idea-text" type="text" maxlength="160" required placeholder="Partilhe uma ideia..." class="flex-1 px-3.5 py-2.5 rounded-xl border-2 border-gray-300 text-sm font-semibold bg-white focus:outline-none focus:border-[#D93805]" />
+                            <button type="submit" class="bg-[#111111] text-[#FFCC00] font-extrabold px-4 py-2.5 rounded-xl text-xs shrink-0 cursor-pointer">
+                                + Ideia
+                            </button>
+                        </form>
+                        <div id="mobile-ideas-list" class="flex flex-col gap-2 max-h-60 overflow-y-auto"></div>
+                    `;
+
+                    document.getElementById('form-idea-submit')?.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const inp = document.getElementById('inp-idea-text') as HTMLInputElement | null;
+                        const val = inp?.value.trim() || '';
+                        if (!val || !participant) return;
+                        const res = await fetch('/api/live/answer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                participantId: participant.id,
+                                questionId: q.id,
+                                responseText: val,
+                            }),
+                        });
+                        if (res.ok && inp) {
+                            inp.value = '';
+                            await pollLiveState();
+                        }
+                    });
+                } else if (qType === 'ranking') {
+                    rankingCurrentOrder = (q.options || []).map((_: any, i: number) => i);
+                    renderRankingMobileList(q);
+                } else if (qType === 'rating') {
+                    const maxStars = Number(q.config?.maxStars) || 5;
+                    const starsArr = Array.from({ length: maxStars }, (_, i) => i + 1);
+                    bodyEl.innerHTML = `
+                        <div class="flex items-center justify-center gap-2 py-6">
+                            ${starsArr
+                                .map(
+                                    (num) => `
+                                <button
+                                    type="button"
+                                    data-star="${num}"
+                                    class="star-btn w-12 h-14 rounded-xl border-2 border-gray-200 bg-white flex flex-col items-center justify-center gap-0.5 shadow-sm cursor-pointer transition"
+                                >
+                                    <span class="text-2xl">⭐</span>
+                                    <span class="text-xs font-black">${num}</span>
+                                </button>
+                            `
+                                )
+                                .join('')}
+                        </div>
+                    `;
+                    document.querySelectorAll('.star-btn').forEach((btn) => {
+                        btn.addEventListener('click', () => {
+                            const val = Number((btn as HTMLElement).dataset.star);
+                            submitChoiceOrRating(q.id, val, true);
+                            updateStarsHighlight(val);
+                        });
+                    });
+                } else if (qType === 'survey') {
+                    const subQs = q.config?.surveyQuestions || [];
+                    bodyEl.innerHTML = `
+                        <form id="form-survey" class="flex flex-col gap-4">
+                            ${subQs
+                                .map((sq: any, sIdx: number) => {
+                                    if (sq.type === 'rating') {
+                                        return `
+                                            <div class="bg-white p-3.5 rounded-xl border border-gray-200">
+                                                <p class="text-xs font-extrabold mb-2">${sIdx + 1}. ${sq.text}</p>
+                                                <div class="flex gap-1.5">
+                                                    ${[1, 2, 3, 4, 5]
+                                                        .map(
+                                                            (n) => `
+                                                        <label class="flex-1 text-center py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs font-bold cursor-pointer">
+                                                            <input type="radio" name="sq_${sq.id}" value="${n}" required class="mr-1" />${n}★
+                                                        </label>
+                                                    `
+                                                        )
+                                                        .join('')}
+                                                </div>
+                                            </div>
+                                        `;
+                                    }
+                                    if (sq.type === 'poll') {
+                                        return `
+                                            <div class="bg-white p-3.5 rounded-xl border border-gray-200">
+                                                <p class="text-xs font-extrabold mb-2">${sIdx + 1}. ${sq.text}</p>
+                                                <div class="flex flex-col gap-1.5">
+                                                    ${(sq.options || [])
+                                                        .map(
+                                                            (o: string, oIdx: number) => `
+                                                        <label class="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs font-semibold flex items-center gap-2 cursor-pointer">
+                                                            <input type="radio" name="sq_${sq.id}" value="${oIdx}" required />
+                                                            <span>${o}</span>
+                                                        </label>
+                                                    `
+                                                        )
+                                                        .join('')}
+                                                </div>
+                                            </div>
+                                        `;
+                                    }
+                                    return `
+                                        <div class="bg-white p-3.5 rounded-xl border border-gray-200">
+                                            <p class="text-xs font-extrabold mb-2">${sIdx + 1}. ${sq.text}</p>
+                                            <input type="text" name="sq_${sq.id}" placeholder="A sua resposta..." class="w-full px-3 py-2 rounded-lg border border-gray-300 text-xs" />
+                                        </div>
+                                    `;
+                                })
+                                .join('')}
+                            <button type="submit" class="w-full bg-[#111111] text-[#FFCC00] font-extrabold py-3 rounded-xl text-sm shadow cursor-pointer">
+                                Submeter Inquérito Completo →
+                            </button>
+                        </form>
+                    `;
+
+                    document.getElementById('form-survey')?.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        if (!participant) return;
+                        const formData = new FormData(e.currentTarget as HTMLFormElement);
+                        const resultObj: Record<string, any> = {};
+                        subQs.forEach((sq: any) => {
+                            const val = formData.get(`sq_${sq.id}`);
+                            if (val !== null) resultObj[sq.id] = val;
+                        });
+
+                        const res = await fetch('/api/live/answer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                participantId: participant.id,
+                                questionId: q.id,
+                                responseJson: resultObj,
+                            }),
+                        });
+                        if (res.ok) {
+                            showConfirmationBanner('✅ Inquérito submetido com sucesso! Obrigado.');
+                        }
+                    });
+                }
+            }
+
+            // Live updates for 'ideas' list (so participants can upvote each other's ideas in real time!)
+            if (qType === 'ideas') {
+                const ideasBox = document.getElementById('mobile-ideas-list');
+                const ideas = state.questionStats?.ideas || [];
+                if (ideasBox) {
+                    ideasBox.innerHTML =
+                        ideas.length === 0
+                            ? `<p class="text-xs text-gray-400 text-center py-4">Seja o primeiro a enviar uma ideia!</p>`
+                            : ideas
+                                  .map(
+                                      (idItem: any) => `
+                                <div class="p-3 rounded-xl bg-white border border-gray-200 flex items-center justify-between gap-2 text-xs">
+                                    <div class="min-w-0">
+                                        <p class="font-bold text-gray-900">${idItem.text}</p>
+                                        <p class="text-[10px] text-gray-400">${idItem.author}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        data-idea-id="${idItem.id}"
+                                        class="btn-upvote-idea px-3 py-1.5 rounded-lg font-extrabold flex items-center gap-1 shrink-0 cursor-pointer ${
+                                            idItem.upvotedByMe
+                                                ? 'bg-[#FFCC00] text-black'
+                                                : 'bg-gray-100 text-gray-700'
+                                        }"
+                                    >
+                                        <span>👍</span>
+                                        <span>${idItem.votes}</span>
+                                    </button>
+                                </div>
+                            `
+                                  )
+                                  .join('');
+
+                    document.querySelectorAll('.btn-upvote-idea').forEach((btn) => {
+                        btn.addEventListener('click', async () => {
+                            if (!participant) return;
+                            const answerId = (btn as HTMLElement).dataset.ideaId;
+                            await fetch('/api/live/answer', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    action: 'upvote_idea',
+                                    participantId: participant.id,
+                                    questionId: q.id,
+                                    answerId,
+                                }),
+                            });
+                            await pollLiveState();
+                        });
+                    });
+                }
+            }
+
+            if (qType === 'quiz' || qType === 'poll') {
+                updateOptionButtonsHighlight();
+            } else if (qType === 'rating' && selectedIndexForCurrentQ !== null) {
+                updateStarsHighlight(selectedIndexForCurrentQ);
+            }
+        }
+
+        function renderRankingMobileList(q: any) {
+            const bodyEl = document.getElementById('q-interaction-body');
+            if (!bodyEl) return;
+            const opts = q.options || [];
+
+            bodyEl.innerHTML = `
+                <div class="flex flex-col gap-2">
+                    ${rankingCurrentOrder
+                        .map(
+                            (optIdx, rankPos) => `
+                        <div class="p-3 rounded-xl bg-white border border-gray-200 flex items-center justify-between gap-2 text-sm font-semibold">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="w-6 h-6 rounded-full bg-[#FFCC00] text-black font-black text-xs flex items-center justify-center shrink-0">
+                                    ${rankPos + 1}º
+                                </span>
+                                <span class="truncate">${opts[optIdx]}</span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button type="button" data-move="up" data-pos="${rankPos}" class="rank-move-btn px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-xs font-bold cursor-pointer" ${rankPos === 0 ? 'disabled' : ''}>↑</button>
+                                <button type="button" data-move="down" data-pos="${rankPos}" class="rank-move-btn px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-xs font-bold cursor-pointer" ${rankPos === rankingCurrentOrder.length - 1 ? 'disabled' : ''}>↓</button>
+                            </div>
+                        </div>
+                    `
+                        )
+                        .join('')}
+                    <button id="btn-submit-ranking" type="button" class="w-full bg-[#111111] text-[#FFCC00] font-extrabold py-3 rounded-xl text-sm shadow mt-1 cursor-pointer">
+                        Confirmar Ordenação →
+                    </button>
+                </div>
+            `;
+
+            document.querySelectorAll('.rank-move-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const el = btn as HTMLElement;
+                    const pos = Number(el.dataset.pos);
+                    const dir = el.dataset.move;
+                    const targetPos = dir === 'up' ? pos - 1 : pos + 1;
+                    if (targetPos >= 0 && targetPos < rankingCurrentOrder.length) {
+                        const tmp = rankingCurrentOrder[pos];
+                        rankingCurrentOrder[pos] = rankingCurrentOrder[targetPos];
+                        rankingCurrentOrder[targetPos] = tmp;
+                        renderRankingMobileList(q);
+                    }
+                });
+            });
+
+            document.getElementById('btn-submit-ranking')?.addEventListener('click', async () => {
+                if (!participant) return;
+                const res = await fetch('/api/live/answer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        participantId: participant.id,
+                        questionId: q.id,
+                        responseJson: { order: rankingCurrentOrder },
+                    }),
+                });
+                if (res.ok) {
+                    showConfirmationBanner('✅ Ordenação registada com sucesso!');
+                }
+            });
+        }
+
+        function updateOptionButtonsHighlight() {
+            document.querySelectorAll('.opt-btn').forEach((btn) => {
+                const idx = Number((btn as HTMLElement).dataset.idx);
+                if (selectedIndexForCurrentQ !== null && idx === selectedIndexForCurrentQ) {
+                    btn.className =
+                        'opt-btn w-full text-left p-3.5 rounded-xl border-2 border-[#111111] bg-[#FFCC00] text-[#111111] font-extrabold text-sm sm:text-base shadow-md flex items-center gap-3 transition cursor-pointer';
+                } else {
+                    btn.className =
+                        'opt-btn w-full text-left p-3.5 rounded-xl border-2 border-gray-200 bg-white text-[#111111] font-semibold text-sm sm:text-base shadow-sm flex items-center gap-3 transition cursor-pointer';
+                }
+            });
+        }
+
+        function updateStarsHighlight(selectedStar: number) {
+            document.querySelectorAll('.star-btn').forEach((btn) => {
+                const val = Number((btn as HTMLElement).dataset.star);
+                if (val <= selectedStar) {
+                    btn.className =
+                        'star-btn w-12 h-14 rounded-xl border-2 border-[#111111] bg-[#FFCC00] flex flex-col items-center justify-center gap-0.5 shadow-md cursor-pointer transition scale-105';
+                } else {
+                    btn.className =
+                        'star-btn w-12 h-14 rounded-xl border-2 border-gray-200 bg-white flex flex-col items-center justify-center gap-0.5 shadow-sm cursor-pointer transition opacity-60';
+                }
+            });
+        }
+
+        function renderQuestionHeaderAndTimer(state: any) {
+            const q = state.currentQuestion;
+            if (!q) return;
+
+            const qCounter = document.getElementById('q-counter');
+            const qTypePill = document.getElementById('q-type-pill');
+            const q2xPill = document.getElementById('q-2x-pill');
+            const qText = document.getElementById('q-text');
+            const imgWrap = document.getElementById('q-image-wrap');
+            const imgEl = document.getElementById('q-image') as HTMLImageElement | null;
+
+            if (qCounter) qCounter.textContent = `${q.number} / ${q.total}`;
+            if (qTypePill) qTypePill.textContent = TYPE_LABELS[q.type] || 'Quiz';
+            if (q2xPill) {
+                if (q.type === 'quiz' && Number(q.pointsMultiplier) > 1) {
+                    q2xPill.classList.remove('hidden');
+                } else {
+                    q2xPill.classList.add('hidden');
+                }
+            }
+            if (qText) qText.textContent = q.text;
+
+            const totalMs = (q.timeLimitSec || 20) * 1000;
+            const remMs = state.timeRemainingMs ?? totalMs;
+            const remSec = Math.ceil(remMs / 1000);
+            const pct = Math.max(0, Math.min(100, (remMs / totalMs) * 100));
+
+            if (imgWrap && imgEl) {
+                if (q.imageUrl) {
+                    imgWrap.classList.remove('hidden');
+                    if (imgEl.src !== q.imageUrl) imgEl.src = q.imageUrl;
+                    if (q.imageRevealMode === 'blur' && state.status === 'question_open') {
+                        const blurPx = Math.round((pct / 100) * 18);
+                        imgEl.style.filter = `blur(${blurPx}px)`;
+                        imgEl.style.transform = 'scale(1)';
+                    } else if (q.imageRevealMode === 'zoom' && state.status === 'question_open') {
+                        const scale = 1 + (pct / 100) * 2.2;
+                        imgEl.style.filter = 'none';
+                        imgEl.style.transform = `scale(${scale.toFixed(2)})`;
+                    } else {
+                        imgEl.style.filter = 'none';
+                        imgEl.style.transform = 'scale(1)';
+                    }
+                } else {
+                    imgWrap.classList.add('hidden');
+                }
+            }
+
+            const timerText = document.getElementById('q-timer-text');
+            const timerBar = document.getElementById('q-timer-bar');
+            if (timerText) {
+                timerText.textContent = q.type === 'quiz' ? (remSec > 0 ? `${remSec}s` : 'Tempo!') : 'Ao vivo';
+            }
+            if (timerBar) {
+                timerBar.style.width = q.type === 'quiz' ? `${pct}%` : '100%';
+            }
+        }
+
+        function renderRevealScreen(state: any) {
+            const q = state.currentQuestion;
+            if (!q) return;
+
+            const iconEl = document.getElementById('reveal-icon');
+            const titleEl = document.getElementById('reveal-title');
+            const subEl = document.getElementById('reveal-subtitle');
+            const correctOptEl = document.getElementById('reveal-correct-option');
+            const myStatsEl = document.getElementById('reveal-my-stats');
+
+            const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const correctText = `${letters[q.correctIndex] || ''} — ${q.options[q.correctIndex] || ''}`;
+            if (correctOptEl) correctOptEl.textContent = correctText;
+
+            if (state.myAnswer) {
+                if (state.myAnswer.isCorrect) {
+                    const pts = state.myAnswer.pointsAwarded || 1;
+                    if (iconEl) iconEl.textContent = '🎉';
+                    if (titleEl) titleEl.textContent = `Acertou! (+${pts} ${pts > 1 ? 'pontos' : 'ponto'})`;
+                    if (subEl) subEl.textContent = `Tempo de reação: ${state.myAnswer.displayTime}`;
+                } else {
+                    if (iconEl) iconEl.textContent = '❌';
+                    if (titleEl) titleEl.textContent = 'Não foi desta!';
+                    const chosenText = q.options[state.myAnswer.selectedIndex] || '—';
+                    if (subEl) subEl.textContent = `A sua resposta: ${chosenText}`;
+                }
+            } else {
+                if (iconEl) iconEl.textContent = '⏱️';
+                if (titleEl) titleEl.textContent = 'Não respondeu a tempo';
+                if (subEl) subEl.textContent = 'Fique atento à próxima pergunta!';
+            }
+
+            const myStanding = (state.quizStandings || []).find(
+                (s: any) => s.participantId === participant?.id
+            );
+            if (myStatsEl) {
+                if (myStanding) {
+                    myStatsEl.textContent = `Posição atual: #${myStanding.position} • ${myStanding.score}/${myStanding.maxScore} pts (${myStanding.displayTime})`;
+                } else {
+                    myStatsEl.textContent = 'Olhe para o ecrã principal!';
+                }
+            }
+        }
+
+        function renderLeaderboardScreen(state: any) {
+            const rankEl = document.getElementById('my-final-rank');
+            const scoreEl = document.getElementById('my-final-score');
+
+            const myStanding =
+                (state.leaderboard?.standings || []).find(
+                    (s: any) =>
+                        participant &&
+                        s.name.toLocaleLowerCase('pt-PT') === participant.name.toLocaleLowerCase('pt-PT')
+                ) ||
+                (state.quizStandings || []).find((s: any) => s.participantId === participant?.id);
+
+            if (myStanding) {
+                if (rankEl) rankEl.textContent = `#${myStanding.position}`;
+                if (scoreEl) {
+                    scoreEl.textContent = `${myStanding.score}/${myStanding.maxScore} pts • Tempo: ${myStanding.displayTime}`;
+                }
+            } else {
+                if (rankEl) rankEl.textContent = '—';
+                if (scoreEl) scoreEl.textContent = 'Obrigado pela sua participação!';
+            }
+        }
+
+        async function pollLiveState() {
+            try {
+                const pid = participant?.id || '';
+                const res = await fetch(`/api/live/state?participantId=${encodeURIComponent(pid)}&t=${Date.now()}`, {
+                    cache: 'no-store',
+                });
+                if (!res.ok) return;
+                const state = await res.json();
+
+                if (!teamsPopulated && selectTeam && Array.isArray(state.fnacTeams)) {
+                    teamsPopulated = true;
+                    selectTeam.innerHTML =
+                        `<option value="">Selecionar Loja / Equipa FNAC (Opcional)</option>` +
+                        state.fnacTeams.map((t: string) => `<option value="${t}">${t}</option>`).join('');
+                }
+
+                const codeEl = document.getElementById('header-quiz-code');
+                if (codeEl && state.activeQuiz?.code) {
+                    codeEl.textContent = `#${state.activeQuiz.code}`;
+                }
+
+                if (!participant || !state.myParticipant) {
+                    if (participant && !state.myParticipant) {
+                        const joinRes = await fetch('/api/live/join', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                participantId: participant.id,
+                                name: participant.name,
+                                teamName: participant.teamName || '',
+                            }),
+                        });
+                        if (joinRes.ok) {
+                            const jData = await joinRes.json();
+                            participant = jData.participant;
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(participant));
+                        } else {
+                            showOnlyScreen(screenJoin);
+                            return;
+                        }
+                    } else {
+                        showOnlyScreen(screenJoin);
+                        return;
+                    }
+                }
+
+                if (userPill && userPillName && participant) {
+                    userPill.classList.remove('hidden');
+                    userPill.classList.add('flex');
+                    userPillName.textContent = participant.name;
+                }
+
+                if (state.status === 'lobby') {
+                    lastQuestionId = '';
+                    const greet = document.getElementById('lobby-greeting');
+                    const teamBadge = document.getElementById('lobby-team-badge');
+                    const qTitle = document.getElementById('lobby-quiz-title');
+                    if (greet && participant) greet.textContent = `Olá, ${participant.name}!`;
+                    if (teamBadge) {
+                        teamBadge.textContent = state.myParticipant?.teamName
+                            ? `🏪 ${state.myParticipant.teamName}`
+                            : '';
+                    }
+                    if (qTitle && state.activeQuiz) qTitle.textContent = state.activeQuiz.title;
+                    showOnlyScreen(screenLobby);
+                } else if (state.status === 'question_open') {
+                    showOnlyScreen(screenQuestion);
+                    renderQuestionHeaderAndTimer(state);
+                    renderInteractionBody(state);
+                } else if (state.status === 'question_reveal') {
+                    const qType = state.currentQuestion?.type || 'quiz';
+                    if (qType === 'quiz') {
+                        lastQuestionId = '';
+                        showOnlyScreen(screenReveal);
+                        renderRevealScreen(state);
+                    } else {
+                        // Para Polls, Word Cloud, Ideas, Rating, etc., continua interativo / visível!
+                        showOnlyScreen(screenQuestion);
+                        renderQuestionHeaderAndTimer(state);
+                        renderInteractionBody(state);
+                    }
+                } else {
+                    lastQuestionId = '';
+                    showOnlyScreen(screenLeaderboard);
+                    renderLeaderboardScreen(state);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        pollLiveState();
+        setInterval(pollLiveState, 1000);
+    </script>
+</body>
+</html>

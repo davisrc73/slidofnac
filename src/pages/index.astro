@@ -1,0 +1,261 @@
+---
+// src/pages/index.astro
+---
+<html lang="pt-PT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tabela de classificação</title>
+    <style>
+        .slido-outer-gradient {
+            background: linear-gradient(180deg, #C81908 0%, #D93805 32%, #EB7802 68%, #F8C600 100%);
+        }
+    </style>
+</head>
+<body class="slido-outer-gradient min-h-screen flex flex-col px-4 pb-5 pt-3 font-sans text-[#141414] select-none overflow-x-hidden">
+
+    <!-- Topo Vermelho: Ícone Medalha + "Tabela de classificação" -->
+    <div class="w-full flex items-center justify-between px-2 pb-2.5 text-white">
+        <div class="flex items-center gap-2 text-lg font-medium tracking-tight opacity-95">
+            <!-- Ícone Roseta / Medalha -->
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="9" r="5"></circle>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.5 13.5L8 21l4-2 4 2-1.5-7.5"></path>
+            </svg>
+            <span id="top-bar-title">Tabela de classificação</span>
+        </div>
+
+        <!-- Controlos subtis que desaparecem após 3s de inatividade -->
+        <div id="floating-controls" class="flex items-center gap-2 text-xs transition-opacity duration-500 opacity-100">
+            <button
+                id="btn-toggle-limit"
+                type="button"
+                class="bg-black/25 hover:bg-black/40 text-white px-3 py-1 rounded-md font-medium transition cursor-pointer"
+            >
+                Mostrar Top 10
+            </button>
+            <button
+                id="btn-fullscreen"
+                type="button"
+                class="bg-black/25 hover:bg-black/40 text-white px-3 py-1 rounded-md font-medium transition cursor-pointer"
+            >
+                ⛶ Ecrã Inteiro
+            </button>
+            <a
+                href="/stage"
+                class="bg-black/25 hover:bg-black/40 text-white px-3 py-1 rounded-md font-semibold transition"
+            >
+                📡 Palco Quiz Ao Vivo
+            </a>
+            <a
+                href="/vencedores"
+                class="bg-[#FFCC00] hover:bg-[#ffd633] text-black px-3 py-1 rounded-md font-bold shadow-sm transition"
+            >
+                🎬 Revelar Top 10
+            </a>
+            <a
+                href="/admin"
+                class="bg-black/35 hover:bg-black/55 text-white px-3 py-1 rounded-md font-semibold transition"
+            >
+                ⚙️ Admin
+            </a>
+        </div>
+    </div>
+
+    <!-- Cartão Central Creme/Branco -->
+    <main class="flex-1 w-full bg-[#FAF8F5] rounded-lg shadow-xl flex flex-col items-center justify-center px-6 py-10 relative">
+
+        <!-- Cabeçalho com Troféu + Título -->
+        <div class="flex flex-col items-center mb-7 text-center">
+            <div class="text-7xl md:text-8xl mb-4 drop-shadow-md leading-none">🏆</div>
+            <h1 id="main-heading" class="text-4xl md:text-5xl font-normal tracking-tight text-[#111111]">
+                Tabela de classificação
+            </h1>
+        </div>
+
+        <!-- Container das Linhas do Leaderboard -->
+        <div id="leaderboard-container" class="w-full max-w-4xl flex flex-col gap-2.5">
+            <!-- Injetado automaticamente via JS -->
+        </div>
+    </main>
+
+    <script>
+        // Ocultar Cursor e Controlos por inatividade (3 segundos)
+        let cursorTimer: ReturnType<typeof setTimeout>;
+        const floatingControls = document.getElementById('floating-controls');
+
+        function showInteractiveUi() {
+            document.body.classList.remove('cursor-none');
+            if (floatingControls) floatingControls.style.opacity = '1';
+            clearTimeout(cursorTimer);
+            cursorTimer = setTimeout(() => {
+                document.body.classList.add('cursor-none');
+                if (floatingControls) floatingControls.style.opacity = '0';
+            }, 3000);
+        }
+
+        document.addEventListener('mousemove', showInteractiveUi);
+        document.addEventListener('keydown', (e) => {
+            showInteractiveUi();
+            if (e.key === 'f' || e.key === 'F') {
+                toggleFullScreen();
+            }
+        });
+        showInteractiveUi();
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+        document.getElementById('btn-fullscreen')?.addEventListener('click', toggleFullScreen);
+
+        let currentLimit = 5;
+        const btnToggleLimit = document.getElementById('btn-toggle-limit');
+        btnToggleLimit?.addEventListener('click', async () => {
+            const nextLimit = currentLimit === 5 ? 10 : 5;
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topLimit: nextLimit }),
+                });
+                await fetchAndRenderData();
+            } catch (e) {
+                currentLimit = nextLimit;
+                await fetchAndRenderData();
+            }
+        });
+
+        // Ícones fiéis ao Slido (Check circular + Cronómetro)
+        const checkIcon = `<svg class="w-5 h-5 inline mr-2 shrink-0 text-[#111111]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        const stopwatchIcon = `<svg class="w-5 h-5 inline mr-2 shrink-0 text-[#111111]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4l2.5 2.5M10 2h4M12 2v3"></path></svg>`;
+
+        let lastRenderedSignature = '';
+
+        function renderStandings(standings: any[], limit: number, meta?: any) {
+            currentLimit = limit || 5;
+            if (btnToggleLimit) {
+                btnToggleLimit.textContent = currentLimit === 5 ? 'Mostrar Top 10' : 'Mostrar Top 5';
+            }
+
+            if (meta && meta.subtitle) {
+                const headingEl = document.getElementById('main-heading');
+                const topTitleEl = document.getElementById('top-bar-title');
+                if (headingEl) headingEl.textContent = meta.subtitle;
+                if (topTitleEl) topTitleEl.textContent = meta.subtitle;
+            }
+
+            const topPlayers = standings.slice(0, currentLimit);
+            const signature = JSON.stringify({ topPlayers, currentLimit });
+            if (signature === lastRenderedSignature) return;
+            lastRenderedSignature = signature;
+
+            const container = document.getElementById('leaderboard-container');
+            if (!container) return;
+
+            const isCompact = currentLimit > 5;
+            const pyClass = isCompact ? 'py-2.5 px-6 text-xl' : 'py-3.5 px-6 text-2xl';
+
+            container.innerHTML = topPlayers
+                .map((player, index) => {
+                    const position = index + 1;
+                    const isFirst = position === 1;
+                    const maxScore = player.maxScore || 12;
+
+                    const rowClass = isFirst
+                        ? 'bg-[#FFCC00] text-[#111111]'
+                        : 'bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.03)]';
+
+                    return `
+                        <div class="flex items-center justify-between ${pyClass} rounded-md transition-all duration-500 ${rowClass}">
+                            <div class="flex items-center gap-4 min-w-0">
+                                <span class="w-10 text-left font-normal">#${position}</span>
+                                <span class="font-normal truncate">${player.name}</span>
+                            </div>
+                            <div class="flex items-center gap-10 md:gap-14 shrink-0 font-normal tabular-nums">
+                                <span class="flex items-center w-28 justify-end">
+                                    ${checkIcon}
+                                    <span>${player.score}/${maxScore}</span>
+                                </span>
+                                <span class="flex items-center w-24 justify-end">
+                                    ${stopwatchIcon}
+                                    <span>${player.displayTime}</span>
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                })
+                .join('');
+        }
+
+        async function fallbackFetchCsv() {
+            const response = await fetch(`/resultados.csv?t=${Date.now()}`, { cache: 'no-store' });
+            if (!response.ok) return;
+            const text = await response.text();
+            const rows = text.trim().split(/\r?\n/).slice(1);
+
+            const scoresByName: Record<string, { name: string; score: number; maxScore: number; timeMs: number; displayTime: string }> = {};
+            rows.forEach((row) => {
+                const cols = row.split(';');
+                if (cols.length >= 6) {
+                    const rawName = cols[1].trim();
+                    const norm = rawName
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[_\-.]+/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .toLowerCase();
+                    const score = parseInt(cols[3].trim(), 10) || 0;
+                    const maxScore = parseInt(cols[4].trim(), 10) || 12;
+                    const timeMs = parseInt(cols[5].trim(), 10) || 0;
+
+                    if (!scoresByName[norm]) {
+                        scoresByName[norm] = { name: rawName.replace(/_/g, ' '), score: 0, maxScore, timeMs: 0, displayTime: '0:00' };
+                    }
+                    scoresByName[norm].score += score;
+                    scoresByName[norm].maxScore = Math.max(scoresByName[norm].maxScore, maxScore);
+                    scoresByName[norm].timeMs += timeMs;
+                    const totalSeconds = Math.round(scoresByName[norm].timeMs / 1000);
+                    const min = Math.floor(totalSeconds / 60);
+                    const sec = totalSeconds % 60;
+                    scoresByName[norm].displayTime = `${min}:${sec.toString().padStart(2, '0')}`;
+                }
+            });
+
+            const results = Object.values(scoresByName).sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return a.timeMs - b.timeMs;
+            });
+
+            renderStandings(results, currentLimit, {
+                subtitle: 'Tabela de classificação',
+            });
+        }
+
+        async function fetchAndRenderData() {
+            try {
+                const response = await fetch(`/api/leaderboard?t=${Date.now()}`, { cache: 'no-store' });
+                if (response.ok) {
+                    const data = await response.json();
+                    renderStandings(data.standings || [], data.topLimit || 5, data);
+                    return;
+                }
+                await fallbackFetchCsv();
+            } catch (error) {
+                try {
+                    await fallbackFetchCsv();
+                } catch (e) {
+                    console.error('Erro no polling:', e);
+                }
+            }
+        }
+
+        fetchAndRenderData();
+        setInterval(fetchAndRenderData, 3000);
+    </script>
+</body>
+</html>

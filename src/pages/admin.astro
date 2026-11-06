@@ -1,0 +1,1721 @@
+---
+// src/pages/admin.astro — Backoffice, Comando em Tempo Real & Criador dos 8 Modelos Interativos Slido
+---
+<html lang="pt-PT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Backoffice & Comando Ao Vivo — Plataforma Interativa FNAC</title>
+</head>
+<body class="bg-[#F6F4EF] min-h-screen font-sans text-[#141414]">
+
+    <!-- Barra de Topo -->
+    <header class="bg-[#141414] text-white border-b border-white/10 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-[#FFCC00] text-black font-black tracking-tighter text-xl px-3 py-0.5 rounded uppercase">
+                    fnac
+                </div>
+                <div>
+                    <h1 class="font-bold text-base md:text-lg leading-tight">Plataforma Interativa de Quizzes & Eventos</h1>
+                    <p class="text-xs text-gray-400">8 Modelos Slido • Batalha de Lojas FNAC • Exportação Excel</p>
+                </div>
+            </div>
+
+            <!-- Navegação de Abas + Links Rápidos + Exportar Excel -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="bg-white/10 p-1 rounded-xl flex items-center gap-1 mr-1">
+                    <button
+                        id="tab-btn-live"
+                        type="button"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-extrabold bg-[#FFCC00] text-black transition cursor-pointer"
+                    >
+                        🎮 Atividades Ao Vivo (8 Modelos)
+                    </button>
+                    <button
+                        id="tab-btn-slido"
+                        type="button"
+                        class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-gray-300 hover:text-white transition cursor-pointer"
+                    >
+                        📊 Importar Excel & Unificar Nomes
+                    </button>
+                </div>
+
+                <button
+                    id="btn-open-manuals"
+                    type="button"
+                    class="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 text-[#FFCC00] font-bold text-xs px-3.5 py-2 rounded-lg transition cursor-pointer border border-[#FFCC00]/30"
+                    title="Abrir Manuais de Operação, Guia dos 8 Modelos e Runbook de Evento"
+                >
+                    <span>📖 Manuais & Runbook</span>
+                </button>
+                <a
+                    href="/api/live/export.xlsx"
+                    class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition shadow"
+                    title="Exportar Classificação Individual, Lojas FNAC e todas as respostas para Excel (.xlsx)"
+                >
+                    <span>📥 Exportar .XLSX</span>
+                </a>
+                <a
+                    href="/stage"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 bg-[#D93805] hover:bg-[#b82e03] text-white font-bold text-xs px-3.5 py-2 rounded-lg transition shadow"
+                >
+                    <span>📡 Palco (/stage)</span>
+                    <span>↗</span>
+                </a>
+                <a
+                    href="/play"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs px-3 py-2 rounded-lg transition"
+                >
+                    <span>📱 Mobile (/play)</span>
+                    <span>↗</span>
+                </a>
+                <a
+                    href="/vencedores"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-[#FFCC00] font-bold text-xs px-3 py-2 rounded-lg transition"
+                >
+                    <span>🎬 Top 10 (/vencedores)</span>
+                    <span>↗</span>
+                </a>
+                <a
+                    href="/"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 bg-[#FFCC00] hover:bg-[#ffd633] text-black font-bold text-xs px-3 py-2 rounded-lg transition"
+                >
+                    <span>🏆 Tabela (/)</span>
+                    <span>↗</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ABA 1: COMANDO AO VIVO & CRIADOR DOS 8 MODELOS SLIDO -->
+    <main id="tab-panel-live" class="max-w-7xl mx-auto px-6 py-7 grid grid-cols-1 lg:grid-cols-12 gap-7">
+
+        <!-- Coluna Esquerda (5 cols): Telecomando em Direto + Rede QR + Lista de Sessões -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+
+            <!-- Cartão 1: Telecomando do Palco em Tempo Real -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border-2 border-[#141414]">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-extrabold flex items-center gap-2">
+                        <span>📡</span> Telecomando do Palco
+                    </h2>
+                    <span id="live-status-badge" class="text-xs font-extrabold uppercase px-3 py-1 rounded-full bg-amber-100 text-amber-900">
+                        Lobby QR
+                    </span>
+                </div>
+
+                <!-- Métricas em Tempo Real -->
+                <div class="grid grid-cols-3 gap-2.5 mb-4 text-center">
+                    <div class="bg-gray-50 rounded-xl p-2.5 border border-gray-200">
+                        <p class="text-[10px] font-bold uppercase text-gray-400">Em Sala</p>
+                        <p id="ctrl-participants-count" class="text-2xl font-black text-[#141414]">0</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-2.5 border border-gray-200">
+                        <p class="text-[10px] font-bold uppercase text-gray-400">Atividade Atual</p>
+                        <p id="ctrl-current-q" class="text-2xl font-black text-[#D93805]">1 / 8</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-xl p-2.5 border border-gray-200">
+                        <p class="text-[10px] font-bold uppercase text-gray-400">Participações</p>
+                        <p id="ctrl-answers-count" class="text-2xl font-black text-emerald-700">0</p>
+                    </div>
+                </div>
+
+                <!-- Botões Principais de Controlo do Fluxo -->
+                <div class="grid grid-cols-2 gap-2.5 mb-3">
+                    <button
+                        type="button"
+                        id="btn-cmd-lobby"
+                        class="py-2.5 px-3 rounded-xl font-bold text-xs bg-gray-100 hover:bg-gray-200 text-gray-900 transition cursor-pointer"
+                    >
+                        📱 1. Mostrar QR Lobby
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-cmd-open-q"
+                        class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-[#D93805] hover:bg-[#b82e03] text-white transition cursor-pointer"
+                    >
+                        ▶️ 2. Abrir Atividade Atual
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-cmd-reveal"
+                        class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer"
+                    >
+                        ✅ 3. Revelar / Fechar Votação
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-cmd-next-q"
+                        class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-[#141414] hover:bg-black text-[#FFCC00] transition cursor-pointer"
+                    >
+                        ⏭️ 4. Próxima Atividade
+                    </button>
+                </div>
+
+                <!-- Botões de Classificação: Individual vs Lojas FNAC -->
+                <div class="grid grid-cols-2 gap-2.5 pt-2 border-t border-gray-100 mb-2.5">
+                    <button
+                        type="button"
+                        id="btn-cmd-leaderboard"
+                        class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-[#FFCC00] hover:bg-[#f0b72b] text-black transition cursor-pointer"
+                    >
+                        🏆 Ranking Individual
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-cmd-teams-leaderboard"
+                        class="py-2.5 px-3 rounded-xl font-extrabold text-xs bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 transition cursor-pointer"
+                    >
+                        🏪 Batalha de Lojas FNAC
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5 pt-2 border-t border-gray-100">
+                    <a
+                        href="/api/live/export.xlsx"
+                        class="py-2 px-3 rounded-xl font-bold text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-center transition"
+                    >
+                        📥 Exportar Tudo (.XLSX)
+                    </a>
+                    <button
+                        type="button"
+                        id="btn-cmd-reset-answers"
+                        class="py-2 px-3 rounded-xl font-semibold text-xs bg-red-50 hover:bg-red-100 text-red-700 transition cursor-pointer"
+                        title="Apaga as respostas desta sessão para começar do zero"
+                    >
+                        🗑️ Zerar Respostas
+                    </button>
+                </div>
+            </section>
+
+            <!-- Cartão 2: Selecionar / Criar Sessão (Playlist de Atividades) -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-extrabold flex items-center gap-2">
+                        <span>📚</span> Sessões / Playlists
+                    </h2>
+                </div>
+
+                <div id="quizzes-list" class="flex flex-col gap-2 mb-4"></div>
+
+                <details class="pt-3 border-t border-gray-100">
+                    <summary class="text-xs font-extrabold text-[#D93805] cursor-pointer">
+                        ➕ Criar Nova Sessão / Playlist
+                    </summary>
+                    <form id="form-new-quiz" class="mt-3 flex flex-col gap-2.5">
+                        <div class="grid grid-cols-3 gap-2">
+                            <input
+                                id="new-quiz-code"
+                                type="text"
+                                placeholder="PIN (ex: FNAC26)"
+                                required
+                                class="col-span-1 px-3 py-2 rounded-lg border border-gray-300 text-xs font-bold uppercase"
+                            />
+                            <input
+                                id="new-quiz-title"
+                                type="text"
+                                placeholder="Título da Sessão / Convenção"
+                                required
+                                class="col-span-2 px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            class="bg-[#141414] text-[#FFCC00] font-bold text-xs py-2 rounded-lg cursor-pointer"
+                        >
+                            Criar Sessão
+                        </button>
+                    </form>
+                </details>
+            </section>
+
+            <!-- Cartão 3: Ligação Mobile (QR Code Wi-Fi / Cloud) & Lista de Colaboradores -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <h2 class="text-lg font-extrabold flex items-center gap-2 mb-2">
+                    <span>🌐</span> Acesso Telemóveis (QR Code)
+                </h2>
+                <p class="text-xs text-gray-500 mb-3">
+                    Por defeito usa o IP Wi-Fi local do seu Mac (<code id="auto-lan-url" class="font-bold text-gray-800"></code>). Se usar um túnel público/Cloud (4G/5G), cole o endereço abaixo:
+                </p>
+
+                <div class="flex gap-2 mb-4">
+                    <input
+                        id="input-public-url"
+                        type="text"
+                        placeholder="Vazio = usar IP Wi-Fi automático do Mac"
+                        class="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-xs font-medium"
+                    />
+                    <button
+                        id="btn-save-url"
+                        type="button"
+                        class="bg-[#141414] text-white px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer shrink-0"
+                    >
+                        Guardar
+                    </button>
+                </div>
+
+                <label class="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer mb-4">
+                    <input id="chk-include-imported" type="checkbox" class="w-4 h-4 accent-[#141414] rounded" />
+                    <span>Combinar pontos dos Quizzes Ao Vivo com ficheiros Excel importados</span>
+                </label>
+
+                <details class="pt-3 border-t border-gray-100 text-xs">
+                    <summary class="font-bold text-gray-700 cursor-pointer">
+                        👥 Lista Autocomplete de Participantes (<span id="roster-count-label">0</span> nomes)
+                    </summary>
+                    <p class="text-gray-500 mt-1.5 mb-2">
+                        Adicione nomes (1 por linha) para aparecerem como sugestão automática no telemóvel dos participantes:
+                    </p>
+                    <textarea
+                        id="textarea-roster"
+                        rows="3"
+                        placeholder="João Silva&#10;Maria Santos"
+                        class="w-full p-2.5 rounded-lg border border-gray-300 text-xs mb-2"
+                    ></textarea>
+                    <button
+                        id="btn-add-roster"
+                        type="button"
+                        class="bg-gray-800 text-white font-bold px-3 py-1.5 rounded-lg cursor-pointer"
+                    >
+                        Adicionar à Lista de Autocomplete
+                    </button>
+                </details>
+            </section>
+        </div>
+
+        <!-- Coluna Direita (7 cols): Grelha Visual dos 8 Modelos Slido + Playlist de Atividades -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex-1 flex flex-col">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-[#D93805]">Playlist da Sessão Ativa</span>
+                        <h2 id="editor-quiz-title" class="text-xl font-extrabold text-[#111111]">
+                            Atividades & Perguntas
+                        </h2>
+                    </div>
+                    <button
+                        id="btn-new-question-toggle"
+                        type="button"
+                        class="bg-[#FFCC00] hover:bg-[#f0b72b] text-black font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-sm transition cursor-pointer"
+                    >
+                        ➕ Adicionar Interação (8 Modelos)
+                    </button>
+                </div>
+
+                <!-- SELETOR VISUAL DOS 8 MODELOS SLIDO + FORMULÁRIO DE CONFIGURAÇÃO -->
+                <form
+                    id="form-question"
+                    class="hidden mb-6 p-5 rounded-2xl bg-[#FAF8F5] border-2 border-[#141414] flex-col gap-4 shadow-md"
+                >
+                    <div class="flex items-center justify-between">
+                        <h3 id="form-q-heading" class="font-extrabold text-base text-[#111111]">
+                            Escolher Modelo de Interação
+                        </h3>
+                        <button
+                            type="button"
+                            id="btn-cancel-q"
+                            class="text-xs font-bold text-gray-500 hover:text-black cursor-pointer"
+                        >
+                            ✕ Fechar
+                        </button>
+                    </div>
+
+                    <input type="hidden" id="edit-q-id" value="" />
+                    <input type="hidden" id="edit-q-type" value="quiz" />
+
+                    <!-- Grelha Visual de 8 Cartões (Idêntica ao Slido) -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                            1. Modelo de Interação
+                        </label>
+                        <div id="model-cards-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                            <!-- Multiple choice (Poll) -->
+                            <button type="button" data-model="poll" class="model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-[#2563EB] transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2.5 mb-2 flex flex-col gap-1.5">
+                                    <div class="h-2 w-4/5 rounded-full bg-[#2563EB]"></div>
+                                    <div class="h-2 w-2/5 rounded-full bg-[#2563EB]"></div>
+                                    <div class="h-2 w-3/5 rounded-full bg-[#2563EB]"></div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                                    <span class="text-[#2563EB]">☑️</span>
+                                    <span>Multiple choice</span>
+                                </div>
+                            </button>
+
+                            <!-- Word cloud -->
+                            <button type="button" data-model="wordcloud" class="model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-[#7C3AED] transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2.5 mb-2 flex flex-wrap items-center justify-center gap-1">
+                                    <span class="h-2.5 w-8 rounded bg-[#9333EA]/60"></span>
+                                    <span class="h-3.5 w-12 rounded bg-[#6B21A8]"></span>
+                                    <span class="h-2.5 w-7 rounded bg-[#C084FC]"></span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                                    <span class="text-[#7C3AED]">☁️</span>
+                                    <span>Word cloud</span>
+                                </div>
+                            </button>
+
+                            <!-- Open text -->
+                            <button type="button" data-model="opentext" class="model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-[#0D9488] transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2.5 mb-2 flex flex-col gap-1.5">
+                                    <div class="h-3 w-full rounded bg-[#0D9488]"></div>
+                                    <div class="h-2.5 w-4/5 rounded bg-gray-300"></div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                                    <span class="text-[#0D9488]">💬</span>
+                                    <span>Open text</span>
+                                </div>
+                            </button>
+
+                            <!-- Ideas -->
+                            <button type="button" data-model="ideas" class="model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-[#65A30D] transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2.5 mb-2 flex flex-col gap-1.5">
+                                    <div class="h-3 w-full rounded bg-[#65A30D]"></div>
+                                    <div class="h-2.5 w-full rounded bg-gray-300"></div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                                    <span class="text-[#65A30D]">💡</span>
+                                    <span>Ideas</span>
+                                </div>
+                            </button>
+
+                            <!-- Ranking -->
+                            <button type="button" data-model="ranking" class="model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-[#DB2777] transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2.5 mb-2 flex flex-col gap-1.5">
+                                    <div class="h-2 w-5/6 rounded-full bg-[#DB2777]"></div>
+                                    <div class="h-2 w-4/6 rounded-full bg-[#DB2777]/80"></div>
+                                    <div class="h-2 w-2/6 rounded-full bg-[#DB2777]/60"></div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                                    <span class="text-[#DB2777]">🏅</span>
+                                    <span>Ranking</span>
+                                </div>
+                            </button>
+
+                            <!-- Rating -->
+                            <button type="button" data-model="rating" class="model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-[#EAB308] transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2.5 mb-2 flex items-end justify-center gap-1.5 h-11">
+                                    <div class="w-2.5 h-3 bg-gray-300 rounded-t"></div>
+                                    <div class="w-2.5 h-5 bg-gray-300 rounded-t"></div>
+                                    <div class="w-2.5 h-6 bg-gray-300 rounded-t"></div>
+                                    <div class="w-2.5 h-8 bg-[#EAB308] rounded-t"></div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                                    <span class="text-[#CA8A04]">⭐</span>
+                                    <span>Rating</span>
+                                </div>
+                            </button>
+
+                            <!-- Quiz -->
+                            <button type="button" data-model="quiz" class="model-card-btn group text-left p-2.5 rounded-xl border-2 border-[#D93805] bg-amber-50/60 transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2 mb-2 flex flex-col items-center gap-1">
+                                    <span class="text-[10px]">🏆</span>
+                                    <div class="h-2.5 w-full rounded bg-[#D93805]"></div>
+                                    <div class="h-2 w-full rounded bg-gray-300"></div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-extrabold text-[#D93805]">
+                                    <span>🏆</span>
+                                    <span>Quiz</span>
+                                </div>
+                            </button>
+
+                            <!-- Survey -->
+                            <button type="button" data-model="survey" class="model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-gray-600 transition cursor-pointer flex flex-col justify-between">
+                                <div class="bg-[#F3F4F6] rounded-lg p-2 mb-2 grid grid-cols-2 gap-1">
+                                    <div class="h-3 bg-[#2563EB]/40 rounded"></div>
+                                    <div class="h-3 bg-[#EAB308]/50 rounded"></div>
+                                    <div class="h-3 bg-[#7C3AED]/40 rounded"></div>
+                                    <div class="h-3 bg-[#DB2777]/40 rounded"></div>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                                    <span>📋</span>
+                                    <span>Survey</span>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Enunciado e Tempo -->
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-3">
+                            <label class="block text-xs font-bold text-gray-600 mb-1">2. Pergunta / Título da Atividade</label>
+                            <input
+                                id="edit-q-text"
+                                type="text"
+                                required
+                                placeholder="Escreva aqui o enunciado..."
+                                class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold bg-white"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Tempo (Segundos)</label>
+                            <input
+                                id="edit-q-time"
+                                type="number"
+                                min="5"
+                                max="600"
+                                value="20"
+                                class="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm font-bold bg-white"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Opções Extra de Quiz (2x Pontos Duplos + Imagem com Reveal Blur/Zoom) -->
+                    <div id="quiz-extra-settings" class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-amber-50/80 border border-amber-200">
+                        <div>
+                            <label class="block text-[11px] font-bold text-amber-950 mb-1">🔥 Multiplicador de Pontos</label>
+                            <select id="edit-q-multiplier" class="w-full px-3 py-2 rounded-lg border border-amber-300 text-xs font-bold bg-white">
+                                <option value="1">1x Pontuação Normal (1 pt)</option>
+                                <option value="2">🔥 2x Pontos Duplos (2 pts)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-amber-950 mb-1">🖼️ URL de Imagem (Opcional)</label>
+                            <input
+                                id="edit-q-image-url"
+                                type="text"
+                                placeholder="https://... ou /imagem.jpg"
+                                class="w-full px-3 py-2 rounded-lg border border-amber-300 text-xs bg-white"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-amber-950 mb-1">✨ Efeito Imagem Misteriosa</label>
+                            <select id="edit-q-image-reveal" class="w-full px-3 py-2 rounded-lg border border-amber-300 text-xs font-bold bg-white">
+                                <option value="none">Nítida desde o início</option>
+                                <option value="blur">Desfocada (Blur progressivo)</option>
+                                <option value="zoom">Super Zoom (Zoom-out progressivo)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Secção de Opções (para Quiz, Poll e Ranking) -->
+                    <div id="options-editor-section">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label id="options-editor-label" class="block text-xs font-bold text-gray-600">
+                                Opções de Resposta (marque o botão redondo na opção correta)
+                            </label>
+                            <button
+                                type="button"
+                                id="btn-add-opt-row"
+                                class="text-xs font-extrabold text-[#D93805] hover:underline cursor-pointer"
+                            >
+                                + Adicionar Opção
+                            </button>
+                        </div>
+                        <div id="edit-q-options-box" class="flex flex-col gap-2"></div>
+                    </div>
+
+                    <!-- Secção de Escala de Estrelas (para Rating) -->
+                    <div id="rating-editor-section" class="hidden p-3.5 rounded-xl bg-white border border-gray-200">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Número Máximo de Estrelas</label>
+                        <select id="edit-q-max-stars" class="px-3 py-2 rounded-lg border border-gray-300 text-xs font-bold bg-white">
+                            <option value="5">5 Estrelas (1 ★ a 5 ★)</option>
+                            <option value="10">10 Estrelas (1 ★ a 10 ★)</option>
+                        </select>
+                    </div>
+
+                    <!-- Secção de Sub-perguntas (para Survey) -->
+                    <div id="survey-editor-section" class="hidden p-3.5 rounded-xl bg-white border border-gray-200 flex-col gap-2.5">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-bold text-gray-700">Sub-perguntas do Survey (Questionário)</label>
+                            <button type="button" id="btn-add-survey-sub" class="text-xs font-extrabold text-[#D93805] cursor-pointer">
+                                + Adicionar Sub-pergunta
+                            </button>
+                        </div>
+                        <div id="survey-subs-box" class="flex flex-col gap-2"></div>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button
+                            type="submit"
+                            class="bg-[#141414] hover:bg-black text-[#FFCC00] font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow"
+                        >
+                            💾 Guardar na Playlist
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Lista de Atividades da Sessão Ativa (com botão "Lançar no Palco") -->
+                <div id="questions-list" class="flex flex-col gap-3"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ABA 2: IMPORTAÇÃO EXCEL/CSV & UNIFICAÇÃO DE UTILIZADORES -->
+    <main id="tab-panel-slido" class="hidden max-w-7xl mx-auto px-6 py-7 grid-cols-1 lg:grid-cols-12 gap-7">
+        <div class="lg:col-span-5 flex flex-col gap-6">
+            <!-- Upload Drag & Drop -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-extrabold flex items-center gap-2">
+                        <span>📤</span> Carregar Ficheiro (.XLSX / .CSV)
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl mb-3 text-xs font-bold">
+                    <button
+                        type="button"
+                        id="mode-merge"
+                        class="py-2 px-3 rounded-lg bg-[#141414] text-[#FFCC00] shadow-sm transition cursor-pointer"
+                    >
+                        ➕ Somar / Atualizar Ronda
+                    </button>
+                    <button
+                        type="button"
+                        id="mode-replace"
+                        class="py-2 px-3 rounded-lg text-gray-600 hover:text-black transition cursor-pointer"
+                    >
+                        🔄 Substituir Tudo
+                    </button>
+                </div>
+
+                <label
+                    id="dropzone"
+                    for="file-input"
+                    class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#FFCC00] bg-amber-50/30 rounded-2xl p-7 text-center cursor-pointer transition"
+                >
+                    <div class="text-3xl mb-2">📊</div>
+                    <p class="font-bold text-sm text-gray-800">Arraste o ficheiro .xlsx ou .csv para aqui</p>
+                    <input id="file-input" type="file" accept=".xlsx,.csv,.txt" multiple class="hidden" />
+                </label>
+
+                <div id="upload-alert" class="hidden mt-4 p-3.5 rounded-xl text-sm font-medium"></div>
+            </section>
+
+            <!-- Unificação de Utilizadores -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-lg font-extrabold">🤝 Unificação de Utilizadores</h2>
+                    <span id="auto-unified-badge" class="text-xs font-bold bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full">
+                        0 unificados
+                    </span>
+                </div>
+
+                <div id="manual-merges-section" class="hidden mb-4">
+                    <h3 class="text-xs font-bold uppercase text-gray-500 mb-2">Unificações Manuais Ativas</h3>
+                    <div id="manual-merges-list" class="flex flex-col gap-2"></div>
+                </div>
+
+                <h3 class="text-xs font-bold uppercase text-gray-500 mb-2">Sugestões de Nomes Parecidos</h3>
+                <div id="suggestions-list" class="flex flex-col gap-2.5 max-h-64 overflow-y-auto"></div>
+            </section>
+
+            <!-- Lugares em Destaque -->
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <h2 class="text-lg font-extrabold mb-3">🖥️ Lugares na Tabela Geral</h2>
+                <div class="grid grid-cols-4 gap-2" id="limit-buttons">
+                    <button type="button" data-limit="5" class="limit-btn py-2 rounded-lg font-bold text-sm border border-gray-200 cursor-pointer">Top 5</button>
+                    <button type="button" data-limit="10" class="limit-btn py-2 rounded-lg font-bold text-sm border border-gray-200 cursor-pointer">Top 10</button>
+                    <button type="button" data-limit="15" class="limit-btn py-2 rounded-lg font-bold text-sm border border-gray-200 cursor-pointer">Top 15</button>
+                    <button type="button" data-limit="20" class="limit-btn py-2 rounded-lg font-bold text-sm border border-gray-200 cursor-pointer">Top 20</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tabela Geral e Unificação por Seleção -->
+        <div class="lg:col-span-7 flex flex-col">
+            <section class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex-1 flex flex-col">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold">Classificação Geral Completa</h2>
+                        <p id="admin-summary" class="text-xs text-gray-500 mt-0.5"></p>
+                    </div>
+                    <input
+                        id="search-player"
+                        type="search"
+                        placeholder="🔍 Pesquisar participante..."
+                        class="w-full sm:w-64 px-3.5 py-2 rounded-xl border border-gray-300 text-sm"
+                    />
+                </div>
+
+                <div
+                    id="manual-selection-bar"
+                    class="hidden mb-4 p-3.5 rounded-xl bg-[#141414] text-white flex flex-wrap items-center justify-between gap-3"
+                >
+                    <div class="text-xs">
+                        <span class="font-bold text-[#FFCC00]" id="selection-count-label"></span>
+                        <span class="text-gray-300 ml-1" id="selection-names-preview"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="select-target-name" class="bg-white text-black rounded-lg px-2.5 py-1.5 text-xs font-semibold"></select>
+                        <button id="btn-merge-selected" type="button" class="bg-[#FFCC00] text-black font-extrabold text-xs px-3.5 py-1.5 rounded-lg cursor-pointer">
+                            🔗 Unificar
+                        </button>
+                        <button id="btn-clear-selection" type="button" class="text-xs text-gray-400 hover:text-white px-2 py-1 cursor-pointer">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-gray-200 flex-1 max-h-[700px]">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-xs uppercase text-gray-500 sticky top-0 border-b border-gray-200">
+                            <tr>
+                                <th class="py-3 px-3 w-10 text-center">🔗</th>
+                                <th class="py-3 px-3 w-14">#</th>
+                                <th class="py-3 px-4">Participante</th>
+                                <th class="py-3 px-3 text-center">Registos</th>
+                                <th class="py-3 px-4 text-right">Certas / Questões</th>
+                                <th class="py-3 px-4 text-right">Tempo (M:SS)</th>
+                                <th class="py-3 px-4 text-right text-gray-400">Tempo (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- MODAL INTERATIVO DE MANUAIS & RUNBOOK DE EVENTO -->
+    <div
+        id="manuals-modal"
+        class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-xs items-center justify-center p-4"
+    >
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl border-2 border-[#141414] overflow-hidden">
+            <!-- Topo do Modal -->
+            <div class="bg-[#141414] text-white px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">📖</span>
+                    <div>
+                        <h2 class="font-extrabold text-base md:text-lg text-[#FFCC00]">
+                            Manuais de Operação, Régie & Runbook FNAC
+                        </h2>
+                        <p class="text-xs text-gray-400">
+                            Documentação completa gravada em <code class="text-gray-200">docs/*.md</code> e <code class="text-gray-200">README.md</code>
+                        </p>
+                    </div>
+                </div>
+                <button
+                    id="btn-close-manuals"
+                    type="button"
+                    class="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer"
+                >
+                    ✕ Fechar (Esc)
+                </button>
+            </div>
+
+            <!-- Abas do Manual -->
+            <div class="bg-[#FAF8F5] border-b border-gray-200 px-6 py-2.5 flex flex-wrap gap-2">
+                <button type="button" data-doc-tab="regie" class="doc-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-extrabold bg-[#141414] text-[#FFCC00] cursor-pointer">
+                    🎛️ 1. Manual de Régie & Palco
+                </button>
+                <button type="button" data-doc-tab="models" class="doc-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-gray-700 border border-gray-200 cursor-pointer">
+                    🎮 2. Guia dos 8 Modelos
+                </button>
+                <button type="button" data-doc-tab="runbook" class="doc-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-gray-700 border border-gray-200 cursor-pointer">
+                    ✅ 3. Checklist & Rede (Wi-Fi / 4G)
+                </button>
+                <button type="button" data-doc-tab="shortcuts" class="doc-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-gray-700 border border-gray-200 cursor-pointer">
+                    ⌨️ 4. Atalhos & Clicker
+                </button>
+            </div>
+
+            <!-- Conteúdo do Manual -->
+            <div class="p-6 overflow-y-auto flex-1 text-sm text-gray-800 space-y-4">
+                <!-- Tab 1: Régie & Palco -->
+                <div id="doc-panel-regie" class="doc-panel space-y-4">
+                    <div class="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                        <h3 class="font-extrabold text-amber-950 mb-1">Fluxo Recomendado de Condução em Evento</h3>
+                        <ol class="list-decimal list-inside space-y-1.5 text-xs text-amber-900 font-medium">
+                            <li><strong>Abrir QR Lobby (<code class="font-bold">/stage</code>)</strong>: Projete o QR Code no ecrã gigante para os participantes entrarem com o nome e escolherem a sua <strong>Loja FNAC</strong>.</li>
+                            <li><strong>Lançar Atividades</strong>: Use o botão <strong>▶️ Abrir Atividade Atual</strong> (ou prima <kbd class="px-1.5 py-0.5 bg-white rounded border">Espaço</kbd> no palco).</li>
+                            <li><strong>Revelar Resposta (nos Quizzes)</strong>: Nos Quizzes competitivos as barras ficam ocultas até clicar em <strong>✅ Revelar</strong>. Nos restantes 7 modelos, os gráficos atualizam-se ao vivo!</li>
+                            <li><strong>Ranking Individual vs Lojas FNAC</strong>: Alterne entre <strong>🏆 Ranking Individual</strong> e <strong>🏪 Batalha de Lojas FNAC</strong>.</li>
+                            <li><strong>Grande Final Top 10 (<code class="font-bold">/vencedores</code>)</strong>: Revele os vencedores em contagem decrescente de <strong>#10 até #1</strong> com confetti no vencedor.</li>
+                        </ol>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div class="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                            <h4 class="font-extrabold text-gray-900 mb-1">🤝 Unificação Automática & Manual</h4>
+                            <p class="text-gray-600">O motor normaliza acentos/maiúsculas e soma repetições dentro do mesmo Quiz ID mantendo o denominador fixo (ex.: <code class="font-bold">12/12</code>). Para fundir dois participantes com nomes diferentes, use a aba <strong>📊 Importar Excel & Unificar Nomes</strong>.</p>
+                        </div>
+                        <div class="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                            <h4 class="font-extrabold text-gray-900 mb-1">📥 Exportação Final (.XLSX)</h4>
+                            <p class="text-gray-600">A qualquer momento clique em <strong>📥 Exportar .XLSX</strong> no topo para descarregar um ficheiro Excel com 4 folhas: Ranking Individual, Ranking Lojas FNAC, Resumo de Atividades e Respostas Detalhadas.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: 8 Modelos -->
+                <div id="doc-panel-models" class="doc-panel hidden space-y-3 text-xs">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="p-3.5 rounded-xl border border-gray-200">
+                            <span class="font-extrabold text-[#2563EB]">☑️ Multiple choice (Poll)</span>
+                            <p class="text-gray-600 mt-1">Sondagem de opinião sem resposta certa/errada. As barras azuis crescem ao vivo no palco.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border border-gray-200">
+                            <span class="font-extrabold text-[#7C3AED]">☁️ Word cloud</span>
+                            <p class="text-gray-600 mt-1">Nuvem de palavras dinâmica onde a dimensão de cada palavra aumenta com a frequência de envios.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border border-gray-200">
+                            <span class="font-extrabold text-[#0D9488]">💬 Open text</span>
+                            <p class="text-gray-600 mt-1">Mural de comentários abertos em cartões identificados com nome e Loja FNAC.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border border-gray-200">
+                            <span class="font-extrabold text-[#65A30D]">💡 Ideas (Brainstorming + Upvotes 👍)</span>
+                            <p class="text-gray-600 mt-1">Os participantes enviam ideias e votam com 👍 nas ideias dos colegas em tempo real.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border border-gray-200">
+                            <span class="font-extrabold text-[#DB2777]">🏅 Ranking</span>
+                            <p class="text-gray-600 mt-1">Ordenação de itens por preferência (1.º ao N.º lugar), agregada no palco pelo método de Borda.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border border-gray-200">
+                            <span class="font-extrabold text-[#CA8A04]">⭐ Rating</span>
+                            <p class="text-gray-600 mt-1">Avaliação por estrelas (1 a 5 ★ ou 10 ★) com média global em destaque e gráfico de barras vertical.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border-2 border-[#D93805] bg-amber-50/40">
+                            <span class="font-extrabold text-[#D93805]">🏆 Quiz Competitivo (+ 2x Pontos & Imagem Blur/Zoom)</span>
+                            <p class="text-gray-600 mt-1">Pontuação competitiva com desempate ao milissegundo, opção de <strong>🔥 2x Pontos Duplos</strong> e imagem desfocada/ampliada que se revela com o tempo.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border border-gray-200">
+                            <span class="font-extrabold text-gray-900">📋 Survey</span>
+                            <p class="text-gray-600 mt-1">Questionário multi-pergunta combinando avaliações por estrelas e perguntas de texto aberto.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Checklist & Rede -->
+                <div id="doc-panel-runbook" class="doc-panel hidden space-y-3 text-xs">
+                    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                        <h4 class="font-extrabold text-emerald-950 mb-1">🌐 Como Ligar os Telemóveis da Audiência</h4>
+                        <ul class="list-disc list-inside space-y-1 text-emerald-900">
+                            <li><strong>Modo Wi-Fi Local (Automático)</strong>: Se o Mac e os telemóveis estiverem na mesma rede Wi-Fi, deixe o campo de URL personalizado vazio.</li>
+                            <li><strong>Modo 4G / 5G (Túnel Cloud)</strong>: Corra num terminal <code class="bg-white px-1.5 py-0.5 rounded border">npx cloudflared tunnel --url http://localhost:4321</code> e cole o endereço <code class="font-bold">https://....trycloudflare.com</code> no cartão <strong>🌐 Acesso Telemóveis</strong>.</li>
+                        </ul>
+                    </div>
+                    <div class="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                        <h4 class="font-extrabold text-gray-900 mb-1.5">📂 Ficheiros Markdown no Repositório</h4>
+                        <ul class="space-y-1 text-gray-600 font-mono">
+                            <li>• README.md</li>
+                            <li>• docs/MANUAL_OPERADOR_E_REGIE.md</li>
+                            <li>• docs/GUIA_8_MODELOS_INTERATIVOS.md</li>
+                            <li>• docs/ARQUITETURA_E_DESENVOLVIMENTO.md</li>
+                            <li>• docs/RUNBOOK_EVENTOS_FNAC.md</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Atalhos -->
+                <div id="doc-panel-shortcuts" class="doc-panel hidden space-y-3 text-xs">
+                    <table class="w-full text-left border-collapse border border-gray-200 rounded-xl overflow-hidden">
+                        <thead class="bg-gray-100 font-extrabold text-gray-700">
+                            <tr>
+                                <th class="p-2.5 border-b">Tecla / Botão</th>
+                                <th class="p-2.5 border-b">No Palco (<code class="font-bold">/stage</code>)</th>
+                                <th class="p-2.5 border-b">No Top 10 (<code class="font-bold">/vencedores</code>)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr>
+                                <td class="p-2.5 font-bold">Espaço / Seta Direita / PageDown</td>
+                                <td class="p-2.5">Avança passo (Lobby → Atividade → Revelar → Próxima)</td>
+                                <td class="p-2.5">Revela o próximo vencedor (#10 até #1)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-bold">Botão <code class="bg-black text-white px-1.5 py-0.5 rounded">&gt;</code> (Canto Inf. Esquerdo)</td>
+                                <td class="p-2.5">Avança para o próximo passo</td>
+                                <td class="p-2.5">Revela o próximo vencedor</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-bold">Tecla <code class="px-1.5 py-0.5 bg-gray-100 rounded border">F</code></td>
+                                <td class="p-2.5">Alterna Ecrã Inteiro (Fullscreen)</td>
+                                <td class="p-2.5">Alterna Ecrã Inteiro (Fullscreen)</td>
+                            </tr>
+                            <tr>
+                                <td class="p-2.5 font-bold">Tecla <code class="px-1.5 py-0.5 bg-gray-100 rounded border">R</code></td>
+                                <td class="p-2.5">—</td>
+                                <td class="p-2.5">Reinicia a contagem decrescente Top 10</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal de Manuais & Runbook
+        const manualsModal = document.getElementById('manuals-modal');
+        document.getElementById('btn-open-manuals')?.addEventListener('click', () => {
+            manualsModal?.classList.remove('hidden');
+            manualsModal?.classList.add('flex');
+        });
+        document.getElementById('btn-close-manuals')?.addEventListener('click', () => {
+            manualsModal?.classList.add('hidden');
+            manualsModal?.classList.remove('flex');
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && manualsModal && !manualsModal.classList.contains('hidden')) {
+                manualsModal.classList.add('hidden');
+                manualsModal.classList.remove('flex');
+            }
+        });
+        document.querySelectorAll('.doc-tab-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetTab = (btn as HTMLElement).dataset.docTab;
+                document.querySelectorAll('.doc-tab-btn').forEach((b) => {
+                    const isActive = (b as HTMLElement).dataset.docTab === targetTab;
+                    b.className = isActive
+                        ? 'doc-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-extrabold bg-[#141414] text-[#FFCC00] cursor-pointer'
+                        : 'doc-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-gray-700 border border-gray-200 cursor-pointer';
+                });
+                document.querySelectorAll('.doc-panel').forEach((p) => {
+                    p.classList.toggle('hidden', p.id !== `doc-panel-${targetTab}`);
+                });
+            });
+        });
+
+        const MODEL_META: Record<string, { badge: string; color: string }> = {
+            quiz: { badge: '🏆 Quiz', color: 'bg-[#D93805] text-white' },
+            boolean: { badge: '🏆 V/F', color: 'bg-[#D93805] text-white' },
+            poll: { badge: '📊 Multiple choice', color: 'bg-[#2563EB] text-white' },
+            wordcloud: { badge: '☁️ Word cloud', color: 'bg-[#7C3AED] text-white' },
+            opentext: { badge: '💬 Open text', color: 'bg-[#0D9488] text-white' },
+            ideas: { badge: '💡 Ideas', color: 'bg-[#65A30D] text-white' },
+            ranking: { badge: '🏅 Ranking', color: 'bg-[#DB2777] text-white' },
+            rating: { badge: '⭐ Rating', color: 'bg-[#CA8A04] text-white' },
+            survey: { badge: '📋 Survey', color: 'bg-gray-800 text-white' },
+        };
+
+        // Alternar Abas
+        const tabBtnLive = document.getElementById('tab-btn-live');
+        const tabBtnSlido = document.getElementById('tab-btn-slido');
+        const tabPanelLive = document.getElementById('tab-panel-live');
+        const tabPanelSlido = document.getElementById('tab-panel-slido');
+
+        tabBtnLive?.addEventListener('click', () => {
+            tabPanelLive?.classList.remove('hidden');
+            tabPanelLive?.classList.add('grid');
+            tabPanelSlido?.classList.add('hidden');
+            tabPanelSlido?.classList.remove('grid');
+            tabBtnLive.className = 'px-3.5 py-1.5 rounded-lg text-xs font-extrabold bg-[#FFCC00] text-black transition cursor-pointer';
+            if (tabBtnSlido) tabBtnSlido.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold text-gray-300 hover:text-white transition cursor-pointer';
+        });
+
+        tabBtnSlido?.addEventListener('click', () => {
+            tabPanelSlido?.classList.remove('hidden');
+            tabPanelSlido?.classList.add('grid');
+            tabPanelLive?.classList.add('hidden');
+            tabPanelLive?.classList.remove('grid');
+            tabBtnSlido.className = 'px-3.5 py-1.5 rounded-lg text-xs font-extrabold bg-[#FFCC00] text-black transition cursor-pointer';
+            if (tabBtnLive) tabBtnLive.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold text-gray-300 hover:text-white transition cursor-pointer';
+        });
+
+        let latestLiveState: any = null;
+        let allStandings: any[] = [];
+        let activeTopLimit = 5;
+        let uploadMode: 'merge' | 'replace' = 'merge';
+        const selectedKeys = new Map<string, string>();
+
+        async function sendHostCmd(payload: any) {
+            const res = await fetch('/api/live/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                renderAll(data);
+            }
+        }
+
+        // Botões do Telecomando
+        document.getElementById('btn-cmd-lobby')?.addEventListener('click', () =>
+            sendHostCmd({ action: 'set_status', status: 'lobby' })
+        );
+        document.getElementById('btn-cmd-open-q')?.addEventListener('click', () =>
+            sendHostCmd({
+                action: 'open_question',
+                questionIndex: latestLiveState?.currentQuestionIndex || 0,
+            })
+        );
+        document.getElementById('btn-cmd-reveal')?.addEventListener('click', () =>
+            sendHostCmd({ action: 'reveal_answer' })
+        );
+        document.getElementById('btn-cmd-next-q')?.addEventListener('click', () =>
+            sendHostCmd({ action: 'next_question' })
+        );
+        document.getElementById('btn-cmd-leaderboard')?.addEventListener('click', () =>
+            sendHostCmd({ action: 'set_status', status: 'leaderboard', leaderboardMode: 'individual' })
+        );
+        document.getElementById('btn-cmd-teams-leaderboard')?.addEventListener('click', () =>
+            sendHostCmd({ action: 'set_status', status: 'leaderboard', leaderboardMode: 'teams' })
+        );
+        document.getElementById('btn-cmd-reset-answers')?.addEventListener('click', () => {
+            if (confirm('Tem a certeza que pretende limpar as respostas desta sessão para começar do zero?')) {
+                sendHostCmd({ action: 'reset_quiz_answers' });
+            }
+        });
+
+        // Criar Nova Sessão
+        document.getElementById('form-new-quiz')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const codeEl = document.getElementById('new-quiz-code') as HTMLInputElement;
+            const titleEl = document.getElementById('new-quiz-title') as HTMLInputElement;
+            await sendHostCmd({
+                action: 'create_quiz',
+                code: codeEl.value,
+                title: titleEl.value,
+            });
+            codeEl.value = '';
+            titleEl.value = '';
+        });
+
+        // Rede & Roster
+        document.getElementById('btn-save-url')?.addEventListener('click', () => {
+            const val = (document.getElementById('input-public-url') as HTMLInputElement)?.value || '';
+            sendHostCmd({ action: 'set_network_config', publicBaseUrl: val });
+        });
+        document.getElementById('chk-include-imported')?.addEventListener('change', (e) => {
+            const checked = (e.currentTarget as HTMLInputElement).checked;
+            sendHostCmd({ action: 'set_network_config', includeImportedRounds: checked });
+        });
+        document.getElementById('btn-add-roster')?.addEventListener('click', async () => {
+            const ta = document.getElementById('textarea-roster') as HTMLTextAreaElement;
+            if (!ta || !ta.value.trim()) return;
+            await sendHostCmd({ action: 'add_roster', rawText: ta.value });
+            ta.value = '';
+        });
+
+        // === Editor dos 8 Modelos de Interação ===
+        const formQuestion = document.getElementById('form-question') as HTMLFormElement | null;
+        const editQId = document.getElementById('edit-q-id') as HTMLInputElement | null;
+        const editQType = document.getElementById('edit-q-type') as HTMLInputElement | null;
+        const editQText = document.getElementById('edit-q-text') as HTMLInputElement | null;
+        const editQTime = document.getElementById('edit-q-time') as HTMLInputElement | null;
+        const editQMultiplier = document.getElementById('edit-q-multiplier') as HTMLSelectElement | null;
+        const editQImageUrl = document.getElementById('edit-q-image-url') as HTMLInputElement | null;
+        const editQImageReveal = document.getElementById('edit-q-image-reveal') as HTMLSelectElement | null;
+        const editQMaxStars = document.getElementById('edit-q-max-stars') as HTMLSelectElement | null;
+        const editQOptionsBox = document.getElementById('edit-q-options-box');
+        const surveySubsBox = document.getElementById('survey-subs-box');
+
+        function selectInteractionModel(modelType: string) {
+            if (!editQType) return;
+            const normalizedType = modelType === 'boolean' ? 'quiz' : modelType;
+            editQType.value = normalizedType;
+
+            document.querySelectorAll('.model-card-btn').forEach((btn) => {
+                const m = (btn as HTMLElement).dataset.model;
+                if (m === normalizedType) {
+                    btn.className =
+                        'model-card-btn group text-left p-2.5 rounded-xl border-2 border-[#141414] bg-amber-50/80 shadow-sm transition cursor-pointer flex flex-col justify-between';
+                } else {
+                    btn.className =
+                        'model-card-btn group text-left p-2.5 rounded-xl border border-gray-200 bg-white hover:border-gray-400 transition cursor-pointer flex flex-col justify-between';
+                }
+            });
+
+            const quizExtra = document.getElementById('quiz-extra-settings');
+            const optionsSec = document.getElementById('options-editor-section');
+            const optionsLabel = document.getElementById('options-editor-label');
+            const ratingSec = document.getElementById('rating-editor-section');
+            const surveySec = document.getElementById('survey-editor-section');
+
+            const needsOptions = normalizedType === 'quiz' || normalizedType === 'poll' || normalizedType === 'ranking';
+            if (optionsSec) optionsSec.classList.toggle('hidden', !needsOptions);
+            if (quizExtra) quizExtra.classList.toggle('hidden', normalizedType !== 'quiz');
+            if (ratingSec) ratingSec.classList.toggle('hidden', normalizedType !== 'rating');
+            if (surveySec) {
+                surveySec.classList.toggle('hidden', normalizedType !== 'survey');
+                surveySec.classList.toggle('flex', normalizedType === 'survey');
+            }
+
+            if (optionsLabel) {
+                optionsLabel.textContent =
+                    normalizedType === 'quiz'
+                        ? 'Opções de Resposta (marque o círculo verde na resposta correta)'
+                        : normalizedType === 'ranking'
+                        ? 'Itens para os participantes ordenarem por preferência'
+                        : 'Opções de Votação (Multiple choice)';
+            }
+
+            // Esconder ou mostrar radio buttons de resposta certa consoante seja Quiz ou Poll/Ranking
+            document.querySelectorAll('.q-opt-radio').forEach((r) => {
+                (r as HTMLElement).classList.toggle('hidden', normalizedType !== 'quiz');
+            });
+        }
+
+        document.querySelectorAll('.model-card-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const model = (btn as HTMLElement).dataset.model || 'quiz';
+                selectInteractionModel(model);
+            });
+        });
+
+        function buildOptionInputs(options: string[], correctIdx: number, modelType = 'quiz') {
+            if (!editQOptionsBox) return;
+            const showRadio = modelType === 'quiz' || modelType === 'boolean';
+            editQOptionsBox.innerHTML = options
+                .map(
+                    (opt, idx) => `
+                    <div class="flex items-center gap-2 q-opt-row">
+                        <input
+                            type="radio"
+                            name="correctOption"
+                            value="${idx}"
+                            ${idx === correctIdx ? 'checked' : ''}
+                            class="q-opt-radio ${showRadio ? '' : 'hidden'} w-4 h-4 accent-emerald-600 cursor-pointer"
+                            title="Marcar como resposta certa"
+                        />
+                        <input
+                            type="text"
+                            value="${String(opt || '').replace(/"/g, '&quot;')}"
+                            placeholder="Opção ${idx + 1}"
+                            class="q-opt-input flex-1 px-3 py-2 rounded-lg border border-gray-300 text-xs font-semibold bg-white"
+                        />
+                        <button type="button" class="btn-del-opt text-gray-400 hover:text-red-600 px-1.5 text-xs font-bold cursor-pointer" title="Remover opção">✕</button>
+                    </div>
+                `
+                )
+                .join('');
+
+            editQOptionsBox.querySelectorAll('.btn-del-opt').forEach((b) => {
+                b.addEventListener('click', () => {
+                    if (editQOptionsBox.querySelectorAll('.q-opt-row').length > 2) {
+                        b.closest('.q-opt-row')?.remove();
+                    }
+                });
+            });
+        }
+
+        document.getElementById('btn-add-opt-row')?.addEventListener('click', () => {
+            const currentOpts: string[] = [];
+            document.querySelectorAll('.q-opt-input').forEach((inp) => {
+                currentOpts.push((inp as HTMLInputElement).value);
+            });
+            currentOpts.push('');
+            const checkedRadio = document.querySelector('input[name="correctOption"]:checked') as HTMLInputElement | null;
+            buildOptionInputs(currentOpts, checkedRadio ? Number(checkedRadio.value) : 0, editQType?.value || 'quiz');
+        });
+
+        function buildSurveySubInputs(subQuestions: any[]) {
+            if (!surveySubsBox) return;
+            const list =
+                subQuestions && subQuestions.length > 0
+                    ? subQuestions
+                    : [
+                          { id: 'sq1', prompt: 'Avalie a sessão de 1 a 5 estrelas', type: 'rating', maxStars: 5 },
+                          { id: 'sq2', prompt: 'O que mais gostou neste evento?', type: 'opentext' },
+                      ];
+            surveySubsBox.innerHTML = list
+                .map(
+                    (sq, idx) => `
+                    <div class="survey-sub-row grid grid-cols-1 sm:grid-cols-12 gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-200 items-center">
+                        <input
+                            type="text"
+                            value="${String(sq.prompt || '').replace(/"/g, '&quot;')}"
+                            placeholder="Pergunta ${idx + 1} do questionário..."
+                            class="sq-prompt sm:col-span-8 px-2.5 py-1.5 rounded border border-gray-300 text-xs font-semibold bg-white"
+                        />
+                        <select class="sq-type sm:col-span-3 px-2 py-1.5 rounded border border-gray-300 text-xs font-bold bg-white">
+                            <option value="rating" ${sq.type === 'rating' ? 'selected' : ''}>⭐ Estrelas (1-5)</option>
+                            <option value="opentext" ${sq.type === 'opentext' ? 'selected' : ''}>💬 Texto Aberto</option>
+                        </select>
+                        <button type="button" class="btn-del-sq sm:col-span-1 text-red-500 font-bold text-xs cursor-pointer">✕</button>
+                    </div>
+                `
+                )
+                .join('');
+
+            surveySubsBox.querySelectorAll('.btn-del-sq').forEach((b) => {
+                b.addEventListener('click', () => {
+                    if (surveySubsBox.querySelectorAll('.survey-sub-row').length > 1) {
+                        b.closest('.survey-sub-row')?.remove();
+                    }
+                });
+            });
+        }
+
+        document.getElementById('btn-add-survey-sub')?.addEventListener('click', () => {
+            const current: any[] = [];
+            document.querySelectorAll('.survey-sub-row').forEach((row, i) => {
+                current.push({
+                    id: `sq${i + 1}`,
+                    prompt: (row.querySelector('.sq-prompt') as HTMLInputElement)?.value || '',
+                    type: (row.querySelector('.sq-type') as HTMLSelectElement)?.value || 'rating',
+                });
+            });
+            current.push({ id: `sq${current.length + 1}`, prompt: '', type: 'rating' });
+            buildSurveySubInputs(current);
+        });
+
+        function openQuestionEditor(q?: any) {
+            if (!formQuestion || !editQId || !editQText || !editQType || !editQTime) return;
+            formQuestion.classList.remove('hidden');
+            formQuestion.classList.add('flex');
+            const heading = document.getElementById('form-q-heading');
+
+            if (q) {
+                if (heading) heading.textContent = `Editar Atividade #${q.orderIndex + 1}`;
+                editQId.value = q.id;
+                editQText.value = q.text;
+                editQTime.value = String(q.timeLimitSec || 20);
+                if (editQMultiplier) editQMultiplier.value = String(q.pointsMultiplier || 1);
+                if (editQImageUrl) editQImageUrl.value = q.imageUrl || '';
+                if (editQImageReveal) editQImageReveal.value = q.imageRevealMode || 'none';
+                if (editQMaxStars) editQMaxStars.value = String(q.config?.maxStars || 5);
+
+                const opts = q.options && q.options.length > 0 ? q.options : ['', '', '', ''];
+                buildOptionInputs(opts, q.correctIndex || 0, q.type || 'quiz');
+                buildSurveySubInputs(q.config?.questions || []);
+                selectInteractionModel(q.type || 'quiz');
+            } else {
+                if (heading) heading.textContent = 'Nova Atividade Interativa';
+                editQId.value = '';
+                editQText.value = '';
+                editQTime.value = '25';
+                if (editQMultiplier) editQMultiplier.value = '1';
+                if (editQImageUrl) editQImageUrl.value = '';
+                if (editQImageReveal) editQImageReveal.value = 'none';
+                if (editQMaxStars) editQMaxStars.value = '5';
+                buildOptionInputs(['', '', '', ''], 0, 'quiz');
+                buildSurveySubInputs([]);
+                selectInteractionModel('quiz');
+            }
+        }
+
+        document.getElementById('btn-new-question-toggle')?.addEventListener('click', () =>
+            openQuestionEditor()
+        );
+        document.getElementById('btn-cancel-q')?.addEventListener('click', () => {
+            formQuestion?.classList.add('hidden');
+            formQuestion?.classList.remove('flex');
+        });
+
+        formQuestion?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const qType = editQType?.value || 'quiz';
+            const opts: string[] = [];
+            document.querySelectorAll('.q-opt-input').forEach((inp) => {
+                const v = (inp as HTMLInputElement).value.trim();
+                if (v) opts.push(v);
+            });
+            const checkedRadio = document.querySelector(
+                'input[name="correctOption"]:checked'
+            ) as HTMLInputElement | null;
+            const correctIndex = checkedRadio ? Number(checkedRadio.value) : 0;
+
+            let config: any = {};
+            if (qType === 'rating') {
+                config = { maxStars: Number(editQMaxStars?.value || 5) };
+            } else if (qType === 'survey') {
+                const subQuestions: any[] = [];
+                document.querySelectorAll('.survey-sub-row').forEach((row, idx) => {
+                    const prompt = (row.querySelector('.sq-prompt') as HTMLInputElement)?.value.trim();
+                    const type = (row.querySelector('.sq-type') as HTMLSelectElement)?.value || 'rating';
+                    if (prompt) {
+                        subQuestions.push({ id: `sq${idx + 1}`, prompt, type, maxStars: 5 });
+                    }
+                });
+                config = { questions: subQuestions };
+            }
+
+            await sendHostCmd({
+                action: 'save_question',
+                questionId: editQId?.value || '',
+                text: editQText?.value || '',
+                type: qType,
+                timeLimitSec: Number(editQTime?.value || 25),
+                pointsMultiplier: qType === 'quiz' ? Number(editQMultiplier?.value || 1) : 1,
+                imageUrl: qType === 'quiz' ? editQImageUrl?.value.trim() || '' : '',
+                imageRevealMode: qType === 'quiz' ? editQImageReveal?.value || 'none' : 'none',
+                options: opts,
+                correctIndex,
+                config,
+            });
+            formQuestion.classList.add('hidden');
+            formQuestion.classList.remove('flex');
+        });
+
+        function renderLivePanel(state: any) {
+            const statusLabels: Record<string, string> = {
+                lobby: '📱 Lobby QR Code',
+                question_open: '⏱️ Atividade em Direto',
+                question_reveal: '✅ Resultado Revelado',
+                leaderboard: state.leaderboardMode === 'teams' ? '🏪 Ranking Lojas FNAC' : '🏆 Classificação Individual',
+                countdown_winners: '🎬 Top 10 Countdown',
+            };
+            const badge = document.getElementById('live-status-badge');
+            if (badge) badge.textContent = statusLabels[state.status] || state.status;
+
+            const pCount = document.getElementById('ctrl-participants-count');
+            const curQ = document.getElementById('ctrl-current-q');
+            const ansCount = document.getElementById('ctrl-answers-count');
+            if (pCount) pCount.textContent = String(state.participantsCount || 0);
+            if (curQ) {
+                const totalQ = state.activeQuiz?.totalQuestions || 0;
+                curQ.textContent = totalQ > 0 ? `${(state.currentQuestionIndex || 0) + 1} / ${totalQ}` : '0 / 0';
+            }
+            if (ansCount) ansCount.textContent = String(state.questionStats?.totalAnswers || 0);
+
+            const autoLanEl = document.getElementById('auto-lan-url');
+            if (autoLanEl) autoLanEl.textContent = `${state.autoDetectedUrl}/play`;
+
+            const pubInput = document.getElementById('input-public-url') as HTMLInputElement | null;
+            if (pubInput && document.activeElement !== pubInput) {
+                pubInput.value = state.publicBaseUrl || '';
+            }
+            const chkImp = document.getElementById('chk-include-imported') as HTMLInputElement | null;
+            if (chkImp) chkImp.checked = Boolean(state.includeImportedRounds);
+
+            const rosterLbl = document.getElementById('roster-count-label');
+            if (rosterLbl) rosterLbl.textContent = String(state.rosterCount || 0);
+
+            // Renderizar Lista de Sessões
+            const quizzesList = document.getElementById('quizzes-list');
+            if (quizzesList) {
+                quizzesList.innerHTML = (state.allQuizzes || [])
+                    .map((q: any) => {
+                        const isActive = q.id === state.activeQuizId;
+                        return `
+                            <div class="p-3 rounded-xl border ${
+                                isActive
+                                    ? 'border-[#141414] bg-amber-50/70'
+                                    : 'border-gray-200 bg-gray-50'
+                            } flex items-center justify-between gap-2 text-xs">
+                                <div class="min-w-0">
+                                    <span class="font-black bg-black text-[#FFCC00] px-2 py-0.5 rounded mr-1.5">#${q.code}</span>
+                                    <strong class="text-gray-900">${q.title}</strong>
+                                    <span class="text-gray-400 ml-1">(${q.questions.length} ativ. • ${q.answersCount} resp.)</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 shrink-0">
+                                    ${
+                                        isActive
+                                            ? `<span class="px-2 py-1 rounded bg-emerald-600 text-white font-bold">Ativo</span>`
+                                            : `<button type="button" data-select-quiz="${q.id}" class="btn-select-quiz px-2.5 py-1 rounded bg-[#141414] text-white font-bold cursor-pointer">Ativar</button>`
+                                    }
+                                </div>
+                            </div>
+                        `;
+                    })
+                    .join('');
+
+                document.querySelectorAll('.btn-select-quiz').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const quizId = (btn as HTMLElement).dataset.selectQuiz;
+                        sendHostCmd({ action: 'select_quiz', quizId });
+                    });
+                });
+            }
+
+            // Renderizar Playlist de Atividades da Sessão Ativa
+            const activeFullQuiz = (state.allQuizzes || []).find(
+                (q: any) => q.id === state.activeQuizId
+            );
+            const editorTitle = document.getElementById('editor-quiz-title');
+            if (editorTitle && activeFullQuiz) {
+                editorTitle.textContent = `${activeFullQuiz.title} (${activeFullQuiz.questions.length} atividades)`;
+            }
+
+            const qListEl = document.getElementById('questions-list');
+            if (qListEl && activeFullQuiz) {
+                const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+                qListEl.innerHTML = activeFullQuiz.questions
+                    .map((q: any, idx: number) => {
+                        const isCurrent =
+                            idx === state.currentQuestionIndex &&
+                            (state.status === 'question_open' || state.status === 'question_reveal');
+                        const qType = q.type || 'quiz';
+                        const meta = MODEL_META[qType] || MODEL_META.quiz;
+
+                        let detailsHtml = '';
+                        if (qType === 'quiz' || qType === 'boolean' || qType === 'poll' || qType === 'ranking') {
+                            detailsHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                                ${(q.options || [])
+                                    .map(
+                                        (opt: string, oIdx: number) => `
+                                        <div class="px-3 py-1.5 rounded-lg border ${
+                                            (qType === 'quiz' || qType === 'boolean') && oIdx === q.correctIndex
+                                                ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold'
+                                                : 'border-gray-200 bg-white text-gray-600'
+                                        }">
+                                            <strong>${qType === 'ranking' ? `#${oIdx + 1}` : letters[oIdx] || oIdx + 1}:</strong> ${opt}
+                                            ${(qType === 'quiz' || qType === 'boolean') && oIdx === q.correctIndex ? ' ✓' : ''}
+                                        </div>
+                                    `
+                                    )
+                                    .join('')}
+                            </div>`;
+                        } else if (qType === 'survey') {
+                            const subs = q.config?.questions || [];
+                            detailsHtml = `<p class="text-xs text-gray-500">📋 ${subs.length} sub-perguntas configuradas no Survey</p>`;
+                        } else if (qType === 'rating') {
+                            detailsHtml = `<p class="text-xs text-gray-500">⭐ Avaliação de 1 a ${q.config?.maxStars || 5} estrelas</p>`;
+                        }
+
+                        return `
+                            <div class="p-4 rounded-2xl border ${
+                                isCurrent
+                                    ? 'border-2 border-[#D93805] bg-amber-50/40 shadow-sm'
+                                    : 'border-gray-200 bg-gray-50/60'
+                            } flex flex-col gap-2.5">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <span class="text-xs font-black uppercase px-2 py-0.5 rounded bg-black text-[#FFCC00]">
+                                                #${idx + 1}
+                                            </span>
+                                            <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${meta.color}">
+                                                ${meta.badge}
+                                            </span>
+                                            ${
+                                                Number(q.pointsMultiplier) > 1
+                                                    ? `<span class="text-[11px] font-black px-2 py-0.5 rounded-full bg-red-600 text-white">🔥 2x Pontos</span>`
+                                                    : ''
+                                            }
+                                            ${
+                                                q.imageUrl
+                                                    ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">🖼️ Imagem (${q.imageRevealMode || 'none'})</span>`
+                                                    : ''
+                                            }
+                                            <span class="text-xs text-gray-500 font-semibold">⏱️ ${q.timeLimitSec}s</span>
+                                        </div>
+                                        <h4 class="font-bold text-base text-[#111111] mt-1.5">${q.text}</h4>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                            type="button"
+                                            data-launch-idx="${idx}"
+                                            class="btn-launch-q bg-[#D93805] hover:bg-[#b82e03] text-white text-xs font-extrabold px-3 py-1.5 rounded-lg cursor-pointer"
+                                        >
+                                            ▶️ Lançar no Palco
+                                        </button>
+                                        <button
+                                            type="button"
+                                            data-edit-idx="${idx}"
+                                            class="btn-edit-q bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-lg cursor-pointer"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            type="button"
+                                            data-del-id="${q.id}"
+                                            class="btn-del-q bg-white border border-gray-300 hover:bg-red-50 text-red-600 text-xs font-bold px-2.5 py-1.5 rounded-lg cursor-pointer"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                                ${detailsHtml}
+                            </div>
+                        `;
+                    })
+                    .join('');
+
+                document.querySelectorAll('.btn-launch-q').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const idx = Number((btn as HTMLElement).dataset.launchIdx);
+                        sendHostCmd({ action: 'open_question', questionIndex: idx });
+                    });
+                });
+
+                document.querySelectorAll('.btn-edit-q').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const idx = Number((btn as HTMLElement).dataset.editIdx);
+                        openQuestionEditor(activeFullQuiz.questions[idx]);
+                    });
+                });
+
+                document.querySelectorAll('.btn-del-q').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const questionId = (btn as HTMLElement).dataset.delId;
+                        if (confirm('Apagar esta atividade da playlist?')) {
+                            sendHostCmd({ action: 'delete_question', questionId });
+                        }
+                    });
+                });
+            }
+        }
+
+        // === Lógica da Aba 2: Importação Excel/CSV & Unificação de Utilizadores ===
+        const btnModeMerge = document.getElementById('mode-merge');
+        const btnModeReplace = document.getElementById('mode-replace');
+        btnModeMerge?.addEventListener('click', () => {
+            uploadMode = 'merge';
+            btnModeMerge.className = 'py-2 px-3 rounded-lg bg-[#141414] text-[#FFCC00] shadow-sm transition cursor-pointer';
+            if (btnModeReplace) btnModeReplace.className = 'py-2 px-3 rounded-lg text-gray-600 hover:text-black transition cursor-pointer';
+        });
+        btnModeReplace?.addEventListener('click', () => {
+            uploadMode = 'replace';
+            btnModeReplace.className = 'py-2 px-3 rounded-lg bg-[#141414] text-[#FFCC00] shadow-sm transition cursor-pointer';
+            if (btnModeMerge) btnModeMerge.className = 'py-2 px-3 rounded-lg text-gray-600 hover:text-black transition cursor-pointer';
+        });
+
+        function showAlert(message: string, isError = false) {
+            const alertEl = document.getElementById('upload-alert');
+            if (!alertEl) return;
+            alertEl.className = `mt-4 p-3.5 rounded-xl text-sm font-semibold ${
+                isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+            }`;
+            alertEl.textContent = message;
+            alertEl.classList.remove('hidden');
+        }
+
+        function fileToBase64(file: File): Promise<string> {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    resolve(result.includes(',') ? result.split(',')[1] : result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleFilesUpload(files: FileList | null) {
+            if (!files || files.length === 0) return;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const contentBase64 = await fileToBase64(file);
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        contentBase64,
+                        mode: i === 0 ? uploadMode : 'merge',
+                    }),
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert(`✅ ${data.message}`, false);
+                    await pollAdminState();
+                } else {
+                    showAlert(data.error || 'Erro ao carregar ficheiro.', true);
+                }
+            }
+        }
+
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
+        dropzone?.addEventListener('dragover', (e) => e.preventDefault());
+        dropzone?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer?.files) handleFilesUpload(e.dataTransfer.files);
+        });
+        fileInput?.addEventListener('change', () => {
+            handleFilesUpload(fileInput.files);
+            fileInput.value = '';
+        });
+
+        function updateSelectionBarUI() {
+            const bar = document.getElementById('manual-selection-bar');
+            const countLabel = document.getElementById('selection-count-label');
+            const previewEl = document.getElementById('selection-names-preview');
+            const selectTarget = document.getElementById('select-target-name') as HTMLSelectElement | null;
+            if (!bar || !countLabel || !previewEl || !selectTarget) return;
+
+            if (selectedKeys.size < 2) {
+                bar.classList.add('hidden');
+                return;
+            }
+            bar.classList.remove('hidden');
+            countLabel.textContent = `${selectedKeys.size} selecionados:`;
+            const entries = Array.from(selectedKeys.entries());
+            previewEl.textContent = entries.map(([, name]) => name).join(' + ');
+            selectTarget.innerHTML = entries
+                .map(([key, name]) => `<option value="${key}">Nome final: ${name}</option>`)
+                .join('');
+        }
+
+        document.getElementById('btn-clear-selection')?.addEventListener('click', () => {
+            selectedKeys.clear();
+            updateSelectionBarUI();
+            renderTableRows((document.getElementById('search-player') as HTMLInputElement)?.value || '');
+        });
+
+        document.getElementById('btn-merge-selected')?.addEventListener('click', async () => {
+            const selectTarget = document.getElementById('select-target-name') as HTMLSelectElement | null;
+            if (!selectTarget || selectedKeys.size < 2) return;
+            const targetKey = selectTarget.value;
+            const displayName = selectedKeys.get(targetKey) || targetKey;
+            const sourceKeys = Array.from(selectedKeys.keys());
+            const sourceLabels: Record<string, string> = {};
+            selectedKeys.forEach((name, key) => (sourceLabels[key] = name));
+
+            const res = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'mergeUsers',
+                    targetKey,
+                    displayName,
+                    sourceKeys,
+                    sourceLabels,
+                }),
+            });
+            if (res.ok) {
+                selectedKeys.clear();
+                updateSelectionBarUI();
+                await pollAdminState();
+            }
+        });
+
+        document.querySelectorAll('.limit-btn').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const limit = Number((btn as HTMLElement).dataset.limit);
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topLimit: limit }),
+                });
+                await pollAdminState();
+            });
+        });
+
+        function renderTableRows(filterText = '') {
+            const tbody = document.getElementById('admin-table-body');
+            if (!tbody) return;
+            const query = filterText.trim().toLocaleLowerCase('pt-PT');
+            const filtered = query
+                ? allStandings.filter((p) => p.name.toLocaleLowerCase('pt-PT').includes(query))
+                : allStandings;
+
+            tbody.innerHTML = filtered
+                .map((p) => {
+                    const isTop = p.position <= activeTopLimit;
+                    const isChecked = selectedKeys.has(p.key);
+                    return `
+                        <tr class="${isChecked ? 'bg-amber-100/70' : isTop ? 'bg-amber-50/40' : 'hover:bg-gray-50'}">
+                            <td class="py-2.5 px-3 text-center">
+                                <input type="checkbox" data-key="${p.key}" data-name="${p.name}" ${isChecked ? 'checked' : ''} class="player-checkbox w-4 h-4 accent-[#141414] rounded cursor-pointer" />
+                            </td>
+                            <td class="py-2.5 px-3 font-bold">#${p.position}</td>
+                            <td class="py-2.5 px-4 font-medium">
+                                ${p.name}
+                                ${p.teamName ? `<span class="ml-1.5 text-[11px] px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-semibold">${p.teamName}</span>` : ''}
+                            </td>
+                            <td class="py-2.5 px-3 text-center">${p.entriesCount || 1}x</td>
+                            <td class="py-2.5 px-4 text-right font-bold tabular-nums">${p.score} <span class="text-xs font-normal text-gray-400">/ ${p.maxScore || 12}</span></td>
+                            <td class="py-2.5 px-4 text-right font-semibold tabular-nums">${p.displayTime}</td>
+                            <td class="py-2.5 px-4 text-right text-xs text-gray-400 tabular-nums">${p.timeMs} ms</td>
+                        </tr>
+                    `;
+                })
+                .join('');
+
+            document.querySelectorAll('.player-checkbox').forEach((cb) => {
+                cb.addEventListener('change', (e) => {
+                    const target = e.currentTarget as HTMLInputElement;
+                    const key = target.dataset.key || '';
+                    const name = target.dataset.name || key;
+                    if (target.checked) selectedKeys.set(key, name);
+                    else selectedKeys.delete(key);
+                    updateSelectionBarUI();
+                });
+            });
+        }
+
+        document.getElementById('search-player')?.addEventListener('input', (e) => {
+            renderTableRows((e.currentTarget as HTMLInputElement).value);
+        });
+
+        function renderSlidoPanel(lb: any) {
+            if (!lb) return;
+            allStandings = lb.standings || [];
+            activeTopLimit = lb.topLimit || 5;
+
+            document.querySelectorAll('.limit-btn').forEach((btn) => {
+                const l = Number((btn as HTMLElement).dataset.limit);
+                btn.className =
+                    l === activeTopLimit
+                        ? 'limit-btn py-2 rounded-lg font-bold text-sm border bg-[#141414] text-[#FFCC00] border-[#141414] cursor-pointer'
+                        : 'limit-btn py-2 rounded-lg font-bold text-sm border border-gray-200 bg-white text-gray-700 cursor-pointer';
+            });
+
+            const summary = document.getElementById('admin-summary');
+            if (summary) summary.textContent = `${lb.totalParticipants} participantes classificados`;
+
+            const autoBadge = document.getElementById('auto-unified-badge');
+            if (autoBadge) autoBadge.textContent = `${(lb.autoUnifiedList || []).length} unificados`;
+
+            const suggestionsList = document.getElementById('suggestions-list');
+            const suggestions = lb.suggestedMerges || [];
+            if (suggestionsList) {
+                suggestionsList.innerHTML =
+                    suggestions.length === 0
+                        ? `<p class="text-xs text-gray-400">Sem sugestões pendentes.</p>`
+                        : suggestions
+                              .map(
+                                  (s: any) => `
+                            <div class="p-2.5 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between gap-2 text-xs">
+                                <div>
+                                    <strong>${s.playerA.name}</strong> + <strong>${s.playerB.name}</strong>
+                                    <span class="text-gray-400 ml-1">(${s.combinedScore} certas)</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    data-target-key="${s.playerA.key}"
+                                    data-target-name="${s.playerA.name}"
+                                    data-source-key="${s.playerB.key}"
+                                    data-source-name="${s.playerB.name}"
+                                    class="btn-accept-sug bg-[#141414] text-[#FFCC00] font-bold px-2.5 py-1 rounded-lg cursor-pointer shrink-0"
+                                >
+                                    🔗 Unificar
+                                </button>
+                            </div>
+                        `
+                              )
+                              .join('');
+
+                document.querySelectorAll('.btn-accept-sug').forEach((btn) => {
+                    btn.addEventListener('click', async () => {
+                        const el = btn as HTMLElement;
+                        const tKey = el.dataset.targetKey || '';
+                        const tName = el.dataset.targetName || '';
+                        const sKey = el.dataset.sourceKey || '';
+                        const sName = el.dataset.sourceName || '';
+                        const displayName = sName.length > tName.length ? sName : tName;
+                        await fetch('/api/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action: 'mergeUsers',
+                                targetKey: tKey,
+                                displayName,
+                                sourceKeys: [tKey, sKey],
+                                sourceLabels: { [sKey]: sName, [tKey]: tName },
+                            }),
+                        });
+                        await pollAdminState();
+                    });
+                });
+            }
+
+            renderTableRows((document.getElementById('search-player') as HTMLInputElement)?.value || '');
+        }
+
+        function renderAll(data: any) {
+            latestLiveState = data;
+            renderLivePanel(data);
+            if (data.leaderboard) {
+                renderSlidoPanel(data.leaderboard);
+            }
+        }
+
+        async function pollAdminState() {
+            try {
+                const res = await fetch(`/api/live/state?t=${Date.now()}`, { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    renderAll(data);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        pollAdminState();
+        setInterval(pollAdminState, 2000);
+    </script>
+</body>
+</html>

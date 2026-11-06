@@ -1,0 +1,527 @@
+---
+// src/pages/vencedores.astro
+---
+<html lang="pt-PT">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tabela de classificação — Top 10 Vencedores</title>
+    <style>
+        .slido-outer-gradient {
+            background: linear-gradient(180deg, #C81908 0%, #D93805 32%, #EB7802 68%, #F8C600 100%);
+        }
+        @keyframes pop-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+            65% {
+                transform: scale(1.015) translateY(-1px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        @keyframes number-pulse {
+            0% {
+                opacity: 0;
+                transform: scale(0.4);
+            }
+            40% {
+                opacity: 1;
+                transform: scale(1.12);
+            }
+            80% {
+                opacity: 1;
+                transform: scale(0.96);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.35);
+            }
+        }
+        .animate-pop-in {
+            animation: pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-countdown-num {
+            animation: number-pulse 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+    </style>
+</head>
+<body class="slido-outer-gradient min-h-screen flex flex-col px-4 pb-5 pt-3 font-sans text-[#141414] select-none overflow-x-hidden relative">
+
+    <!-- Canvas de Confetti para o 1º Lugar -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-40"></canvas>
+
+    <!-- Topo Vermelho: Ícone Medalha + "Tabela de classificação" -->
+    <div class="w-full flex items-center justify-between px-2 pb-2.5 text-white z-20">
+        <div class="flex items-center gap-2 text-lg font-medium tracking-tight opacity-95">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="9" r="5"></circle>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.5 13.5L8 21l4-2 4 2-1.5-7.5"></path>
+            </svg>
+            <span>Tabela de classificação</span>
+        </div>
+
+        <!-- Controlos subtis no topo direito (ocultam-se após 3s sem mexer o rato) -->
+        <div id="floating-controls" class="flex flex-wrap items-center gap-2 text-xs transition-opacity duration-500 opacity-100">
+            <span id="step-counter-badge" class="bg-black/20 text-white px-2.5 py-1 rounded-md font-medium">
+                10º ao 1º lugar
+            </span>
+            <button
+                id="btn-prev"
+                type="button"
+                class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md font-medium transition cursor-pointer disabled:opacity-30"
+                title="Recuar um lugar (Seta Esquerda)"
+            >
+                ◀ Anterior
+            </button>
+            <button
+                id="btn-reset-reveal"
+                type="button"
+                class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md font-medium transition cursor-pointer"
+                title="Reiniciar apresentação (Tecla R)"
+            >
+                ↺ Reiniciar
+            </button>
+            <button
+                id="btn-toggle-321"
+                type="button"
+                class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md font-medium transition cursor-pointer"
+                title="Configurar quando aparece a contagem 3-2-1"
+            >
+                ⏱️ 3-2-1: Top 3
+            </button>
+            <button
+                id="btn-fullscreen"
+                type="button"
+                class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md font-medium transition cursor-pointer"
+            >
+                ⛶ Ecrã Inteiro
+            </button>
+            <a
+                href="/"
+                class="bg-black/25 hover:bg-black/40 text-white px-2.5 py-1 rounded-md font-medium transition"
+            >
+                📊 Tabela Ao Vivo
+            </a>
+            <a
+                href="/admin"
+                class="bg-black/35 hover:bg-black/55 text-white px-2.5 py-1 rounded-md font-semibold transition"
+            >
+                ⚙️ Admin
+            </a>
+        </div>
+    </div>
+
+    <!-- Overlay Modal de Contagem Decrescente (3... 2... 1...) -->
+    <div
+        id="countdown-overlay"
+        class="hidden fixed inset-0 bg-[#FAF8F5]/92 backdrop-blur-sm z-30 flex-col items-center justify-center text-center pointer-events-none"
+    >
+        <div class="bg-[#FFCC00] text-[#111111] px-6 py-2 rounded-full text-lg md:text-xl font-bold uppercase tracking-widest mb-4 shadow-sm">
+            <span id="countdown-label">A revelar 10º Lugar...</span>
+        </div>
+        <div
+            id="countdown-number"
+            class="text-[10rem] md:text-[13rem] leading-none font-black text-[#111111] drop-shadow-[0_10px_25px_rgba(235,120,2,0.35)]"
+        >
+            3
+        </div>
+    </div>
+
+    <!-- Cartão Central Creme/Branco (Idêntico à imagem) -->
+    <main
+        id="stage-click-area"
+        class="flex-1 w-full bg-[#FAF8F5] rounded-lg shadow-xl flex flex-col items-center justify-center px-6 py-6 relative cursor-pointer"
+        title="Clique em qualquer lugar ou no botão '>' para revelar o próximo vencedor"
+    >
+        <!-- Cabeçalho com Troféu + Título -->
+        <div class="flex flex-col items-center mb-5 text-center">
+            <div class="text-6xl md:text-7xl mb-2 drop-shadow-md leading-none">🏆</div>
+            <h1 class="text-3xl md:text-5xl font-normal tracking-tight text-[#111111]">
+                Tabela de classificação
+            </h1>
+            <p id="next-action-hint" class="text-xs md:text-sm text-gray-500 mt-1">
+                Clique para revelar o 10º lugar
+            </p>
+        </div>
+
+        <!-- Lista das 10 Posições (10º -> 1º em Countdown) -->
+        <div id="top10-container" class="w-full max-w-4xl flex flex-col gap-2">
+            <!-- Injetado via JS -->
+        </div>
+    </main>
+
+    <!-- Botão Preto '>' no Canto Inferior Esquerdo (exatamente como na imagem) -->
+    <button
+        id="btn-next-corner"
+        type="button"
+        class="fixed bottom-8 left-4 z-30 bg-[#1B1B1B] hover:bg-black text-white w-14 h-12 rounded-r-xl rounded-l-md shadow-lg flex items-center justify-center transition cursor-pointer"
+        title="Avançar para o próximo vencedor (Clique ou Espaço)"
+    >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
+        </svg>
+    </button>
+
+    <script>
+        const TOP_COUNT = 10;
+
+        // Ocultar Cursor e Barra de Controlos por inatividade (3 segundos)
+        let cursorTimer: ReturnType<typeof setTimeout>;
+        const floatingControls = document.getElementById('floating-controls');
+
+        function wakeUi() {
+            document.body.classList.remove('cursor-none');
+            if (floatingControls) floatingControls.style.opacity = '1';
+            clearTimeout(cursorTimer);
+            cursorTimer = setTimeout(() => {
+                document.body.classList.add('cursor-none');
+                if (floatingControls) floatingControls.style.opacity = '0';
+            }, 3000);
+        }
+
+        document.addEventListener('mousemove', wakeUi);
+        wakeUi();
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+        document.getElementById('btn-fullscreen')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFullScreen();
+        });
+
+        // Ícones fiéis à imagem do Slido (Check circular + Cronómetro)
+        const checkIcon = `<svg class="w-5 h-5 inline mr-2 shrink-0 text-[#111111]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        const stopwatchIcon = `<svg class="w-5 h-5 inline mr-2 shrink-0 text-[#111111]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"></circle><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4l2.5 2.5M10 2h4M12 2v3"></path></svg>`;
+
+        let winnersTop10: any[] = []; // [1º..10º]
+        let countdownOrder: any[] = []; // [10º..1º]
+        let currentStepIndex = -1;
+        let isCountingDown = false;
+        let countdown321Mode: 'top3' | 'all' | 'first' | 'off' = 'top3';
+
+        const btnToggle321 = document.getElementById('btn-toggle-321');
+        btnToggle321?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (countdown321Mode === 'top3') {
+                countdown321Mode = 'all';
+                btnToggle321.textContent = '⏱️ 3-2-1: Todos';
+            } else if (countdown321Mode === 'all') {
+                countdown321Mode = 'first';
+                btnToggle321.textContent = '⏱️ 3-2-1: Só #1';
+            } else if (countdown321Mode === 'first') {
+                countdown321Mode = 'off';
+                btnToggle321.textContent = '⏱️ 3-2-1: Direto';
+            } else {
+                countdown321Mode = 'top3';
+                btnToggle321.textContent = '⏱️ 3-2-1: Top 3';
+            }
+        });
+
+        async function loadTop10Data() {
+            try {
+                const res = await fetch(`/api/leaderboard?t=${Date.now()}`, { cache: 'no-store' });
+                if (res.ok) {
+                    const data = await res.json();
+                    winnersTop10 = (data.standings || []).slice(0, TOP_COUNT);
+                    countdownOrder = [...winnersTop10].reverse(); // [10º, 9º, ..., 1º]
+                    renderStage();
+                }
+            } catch (e) {
+                console.error('Erro ao carregar Top 10:', e);
+            }
+        }
+
+        function run321Countdown(position: number): Promise<void> {
+            const shouldAnimate =
+                countdown321Mode === 'all' ||
+                (countdown321Mode === 'top3' && position <= 3) ||
+                (countdown321Mode === 'first' && position === 1);
+
+            if (!shouldAnimate) {
+                return Promise.resolve();
+            }
+
+            isCountingDown = true;
+            updateControlsUI();
+
+            const overlay = document.getElementById('countdown-overlay');
+            const labelEl = document.getElementById('countdown-label');
+            const numEl = document.getElementById('countdown-number');
+
+            overlay?.classList.remove('hidden');
+            overlay?.classList.add('flex');
+
+            if (labelEl) {
+                labelEl.textContent =
+                    position === 1
+                        ? '🏆 A REVELAR O 1º LUGAR — VENCEDOR...'
+                        : `A revelar o ${position}º Lugar...`;
+            }
+
+            const steps = ['3', '2', '1'];
+            const stepDuration = position === 1 ? 650 : 420;
+
+            return new Promise((resolve) => {
+                let i = 0;
+                const tick = () => {
+                    if (i >= steps.length) {
+                        overlay?.classList.add('hidden');
+                        overlay?.classList.remove('flex');
+                        isCountingDown = false;
+                        resolve();
+                        return;
+                    }
+                    if (numEl) {
+                        numEl.textContent = steps[i];
+                        numEl.classList.remove('animate-countdown-num');
+                        void numEl.offsetWidth;
+                        numEl.classList.add('animate-countdown-num');
+                    }
+                    i++;
+                    setTimeout(tick, stepDuration);
+                };
+                tick();
+            });
+        }
+
+        function updateControlsUI() {
+            const total = countdownOrder.length;
+            const badge = document.getElementById('step-counter-badge');
+            const hint = document.getElementById('next-action-hint');
+            const btnPrev = document.getElementById('btn-prev') as HTMLButtonElement | null;
+
+            if (btnPrev) btnPrev.disabled = currentStepIndex < 0 || isCountingDown;
+            if (total === 0) return;
+
+            if (currentStepIndex < 0) {
+                const firstToReveal = countdownOrder[0]?.position || 10;
+                if (badge) badge.textContent = `Pronto (${total} lugares)`;
+                if (hint) hint.textContent = `Clique ou prima '>' para revelar o ${firstToReveal}º lugar`;
+            } else if (currentStepIndex < total - 1) {
+                const currentWinner = countdownOrder[currentStepIndex];
+                const nextWinner = countdownOrder[currentStepIndex + 1];
+                if (badge) badge.textContent = `Revelado #${currentWinner.position} (${currentStepIndex + 1}/${total})`;
+                if (hint) {
+                    hint.textContent =
+                        nextWinner.position === 1
+                            ? `Clique ou prima '>' para revelar o 1º Lugar!`
+                            : `Clique ou prima '>' para revelar o ${nextWinner.position}º lugar`;
+                }
+            } else {
+                if (badge) badge.textContent = `Top ${total} completo`;
+                if (hint) hint.textContent = `Top ${total} revelado na totalidade`;
+            }
+        }
+
+        function renderStage() {
+            updateControlsUI();
+            const container = document.getElementById('top10-container');
+            if (!container) return;
+
+            const revealedPositions = new Set(
+                countdownOrder.slice(0, currentStepIndex + 1).map((p) => p.position)
+            );
+            const justRevealedPosition =
+                currentStepIndex >= 0 && currentStepIndex < countdownOrder.length
+                    ? countdownOrder[currentStepIndex].position
+                    : null;
+
+            container.innerHTML = winnersTop10
+                .map((player) => {
+                    const position = player.position;
+                    const isRevealed = revealedPositions.has(position);
+                    const isJustRevealed = justRevealedPosition === position;
+                    const maxScore = player.maxScore || 12;
+
+                    if (!isRevealed) {
+                        const isNextUp =
+                            countdownOrder[currentStepIndex + 1]?.position === position;
+
+                        return `
+                            <div class="flex items-center justify-between py-2.5 px-6 rounded-md bg-white/60 border ${
+                                isNextUp
+                                    ? 'border-[#FFCC00] bg-[#FFCC00]/15 text-[#111111]'
+                                    : 'border-transparent text-gray-400'
+                            } text-xl transition-all duration-300">
+                                <div class="flex items-center gap-4">
+                                    <span class="w-10 text-left font-normal">#${position}</span>
+                                    <span class="font-normal">
+                                        ${isNextUp ? 'Próximo lugar a revelar...' : '• • •'}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-10 md:gap-14 opacity-30 tabular-nums">
+                                    <span class="w-28 text-right">—/${maxScore}</span>
+                                    <span class="w-24 text-right">—:--</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    const isFirst = position === 1;
+                    const rowClass = isFirst
+                        ? 'bg-[#FFCC00] text-[#111111]'
+                        : 'bg-white text-[#111111] shadow-[0_1px_2px_rgba(0,0,0,0.03)]';
+
+                    const highlightAnim = isJustRevealed
+                        ? isFirst
+                            ? 'animate-pop-in ring-2 ring-[#D93805]/40'
+                            : 'animate-pop-in ring-2 ring-[#FFCC00]'
+                        : '';
+
+                    return `
+                        <div class="flex items-center justify-between py-2.5 px-6 rounded-md text-xl md:text-2xl transition-all duration-500 ${rowClass} ${highlightAnim}">
+                            <div class="flex items-center gap-4 min-w-0">
+                                <span class="w-10 text-left font-normal">#${position}</span>
+                                <span class="font-normal truncate">${player.name}</span>
+                            </div>
+                            <div class="flex items-center gap-10 md:gap-14 shrink-0 font-normal tabular-nums">
+                                <span class="flex items-center w-28 justify-end">
+                                    ${checkIcon}
+                                    <span>${player.score}/${maxScore}</span>
+                                </span>
+                                <span class="flex items-center w-24 justify-end">
+                                    ${stopwatchIcon}
+                                    <span>${player.displayTime}</span>
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                })
+                .join('');
+        }
+
+        async function advanceStep() {
+            if (isCountingDown) return;
+            if (countdownOrder.length === 0) {
+                await loadTop10Data();
+                if (countdownOrder.length === 0) return;
+            }
+
+            const total = countdownOrder.length;
+            if (currentStepIndex >= total - 1) {
+                return;
+            }
+
+            const nextIndex = currentStepIndex + 1;
+            const targetWinner = countdownOrder[nextIndex];
+
+            await run321Countdown(targetWinner.position);
+            currentStepIndex = nextIndex;
+            renderStage();
+
+            if (targetWinner.position === 1) {
+                launchVictoryConfetti();
+            }
+        }
+
+        function previousStep() {
+            if (isCountingDown || currentStepIndex < 0) return;
+            currentStepIndex--;
+            renderStage();
+        }
+
+        function resetPresentation() {
+            if (isCountingDown) return;
+            currentStepIndex = -1;
+            renderStage();
+        }
+
+        document.getElementById('stage-click-area')?.addEventListener('click', () => {
+            advanceStep();
+        });
+
+        document.getElementById('btn-next-corner')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            advanceStep();
+        });
+
+        document.getElementById('btn-prev')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            previousStep();
+        });
+
+        document.getElementById('btn-reset-reveal')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetPresentation();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            wakeUi();
+            if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === 'Enter') {
+                e.preventDefault();
+                advanceStep();
+            } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+                e.preventDefault();
+                previousStep();
+            } else if (e.key === 'r' || e.key === 'R') {
+                e.preventDefault();
+                resetPresentation();
+            } else if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                toggleFullScreen();
+            }
+        });
+
+        function launchVictoryConfetti() {
+            const canvas = document.getElementById('confetti-canvas') as HTMLCanvasElement | null;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const colors = ['#FFCC00', '#C81908', '#EB7802', '#111111', '#FFFFFF'];
+            const particles = Array.from({ length: 140 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * -canvas.height * 0.5 - 20,
+                w: Math.random() * 10 + 6,
+                h: Math.random() * 6 + 4,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                vx: (Math.random() - 0.5) * 4,
+                vy: Math.random() * 4 + 3,
+                angle: Math.random() * Math.PI * 2,
+                spin: (Math.random() - 0.5) * 0.2,
+            }));
+
+            let frame = 0;
+            function draw() {
+                if (!ctx || !canvas) return;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                for (const p of particles) {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.angle += p.spin;
+                    if (p.y < canvas.height + 30) active = true;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.angle);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                }
+                frame++;
+                if (active && frame < 320) {
+                    requestAnimationFrame(draw);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+
+        loadTop10Data();
+    </script>
+</body>
+</html>
