@@ -11,7 +11,7 @@
 # 6. Limpa imagens Docker obsoletas para poupar espaço no disco do NAS
 # ==============================================================================
 
-set -e
+set -eo pipefail
 
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
@@ -41,7 +41,26 @@ log() {
 log "${BLUE}======================================================${NC}"
 log "${BLUE}🏆 SlidoFNAC — Iniciando Atualização no Synology NAS  ${NC}"
 log "${BLUE}======================================================${NC}"
-log "Diretório de trabalho: $PROJECT_DIR"
+log "Diretório de trabalho: $PROJECT_DIR (Utilizador: $(whoami))"
+
+# Se estiver a correr como root (via Agendador de Tarefas DSM), garante que o socket Docker
+# também fica acessível para deploys diretos via SSH a partir do Mac (davis.correia)
+if [ "$(id -u)" -eq 0 ] && [ -S /var/run/docker.sock ]; then
+  chmod 666 /var/run/docker.sock || true
+  chown -R davis.correia:users "$PROJECT_DIR" || true
+fi
+
+# Verificar acesso ao daemon Docker
+DOCKER_PREFIX=""
+if ! docker info >/dev/null 2>&1; then
+  if sudo -n docker info >/dev/null 2>&1; then
+    DOCKER_PREFIX="sudo "
+  else
+    log "${RED}❌ ERRO DE PERMISSÃO NO DOCKER (/var/run/docker.sock):${NC}"
+    log "${YELLOW}👉 No Agendador de Tarefas do Synology DSM, edite a tarefa e mude o campo 'Utilizador' de '$(whoami)' para 'root'!${NC}"
+    exit 1
+  fi
+fi
 
 # 1. Backup preventivo da Base de Dados SQLite
 TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
@@ -57,64 +76,75 @@ if ! command -v git &> /dev/null; then
 fi
 
 log "${YELLOW}📥 [1/5] A puxar atualizações do GitHub (origin/main)...${NC}"
+git config --global --add safe.directory "$PROJECT_DIR" || true
 git fetch origin main
 
 CURRENT_HASH=$(git rev-parse HEAD)
 REMOTE_HASH=$(git rev-parse origin/main)
 
 if [ "$CURRENT_HASH" = "$REMOTE_HASH" ] && [ "${1:-}" != "--force" ]; then
-  log "${GREEN}✓ O código local já se encontra na versão mais recente ($CURRENT_HASH).${NC}"
-  log "Para forçar a reconstrução mesmo sem alterações, use: bash scripts/update-nas.sh --force"
-  log "${BLUE}Atualização concluída com sucesso.${NC}"
-  exit 0
+  # Mesmo que o commit seja igual, verifica se o contentor já está a correr
+  if ${DOCKER_PREFIX}docker ps --format '{{.Names}}' | grep -q 'slidofnac-prod'; then
+    log "${GREEN}✓ O código local já se encontra na versão mais recente ($CURRENT_HASH) e os contentores estão ativos.${NC}"
+    exit 0
+  else
+    log "${YELLOW}ℹ️ O código está atualizado, mas os contentores ainda não estão ativos. A iniciar construção...${NC}"
+  fi
+else
+  git pull origin main | tee -a "$LOG_FILE"
 fi
 
-git pull origin main | tee -a "$LOG_FILE"
 NEW_HASH=$(git rev-parse --short HEAD)
-log "${GREEN}✓ Código atualizado com sucesso para o commit: $NEW_HASH${NC}"
+log "${GREEN}✓ Código pronto no commit: $NEW_HASH${NC}"
 
 # 3. Reconstruir os contentores Docker
 log "${YELLOW}🔨 [2/5] A reconstruir os contentores Docker (Produção 4341 & Staging 4342)...${NC}"
 
-if docker compose version &> /dev/null; then
-  COMPOSE_CMD="docker compose"
+if ${DOCKER_PREFIX}docker compose version &> /dev/null; then
+  COMPOSE_CMD="${DOCKER_PREFIX}docker compose"
 elif command -v docker-compose &> /dev/null; then
-  COMPOSE_CMD="docker-compose"
+  COMPOSE_CMD="${DOCKER_PREFIX}docker-compose"
 else
   log "${RED}ERRO: Docker Compose não encontrado no sistema.${NC}"
   exit 1
 fi
 
-$COMPOSE_CMD build --no-cache | tee -a "$LOG_FILE"
+$COMPOSE_CMD build --no-cache 2>&1 | tee -a "$LOG_FILE"
 log "${GREEN}✓ Imagens Docker reconstruídas com sucesso.${NC}"
 
 # 4. Reiniciar os serviços
 log "${YELLOW}🚀 [3/5] A reiniciar os contentores do SlidoFNAC...${NC}"
-$COMPOSE_CMD up -d --remove-orphans | tee -a "$LOG_FILE"
+$COMPOSE_CMD up -d --remove-orphans 2>&1 | tee -a "$LOG_FILE"
+
+# Garantir permissões na pasta de dados e logs para o utilizador davis.correia
+if [ "$(id -u)" -eq 0 ]; then
+  chown -R davis.correia:users "$PROJECT_DIR/data" "$PROJECT_DIR/logs" "$PROJECT_DIR/backups" || true
+fi
 
 # 5. Validar o Healthcheck de Produção (4341) e Staging (4342)
 log "${YELLOW}⏳ [4/5] A validar estado dos serviços (4341 e 4342)...${NC}"
 sleep 5
 
 HEALTHY_PROD=false
-for i in {1..10}; do
+for i in {1..12}; do
   if curl -s http://localhost:4341/api/health | grep -q '"status":"ok"'; then
     HEALTHY_PROD=true
     break
   fi
-  log "A aguardar inicialização de Produção :4341 (tentativa $i/10)..."
+  log "A aguardar inicialização de Produção :4341 (tentativa $i/12)..."
   sleep 2
 done
 
 if [ "$HEALTHY_PROD" = true ]; then
   log "${GREEN}✓ Produção (:4341) e Staging (:4342) estão 100% operacionais!${NC}"
 else
-  log "${YELLOW}⚠️ O serviço demorou a responder, verifique os logs com: $COMPOSE_CMD logs${NC}"
+  log "${RED}⚠️ O serviço não respondeu no tempo esperado. Verifique os logs com: $COMPOSE_CMD logs${NC}"
+  exit 1
 fi
 
 # 6. Limpar imagens Docker obsoletas
 log "${YELLOW}🧹 [5/5] A limpar imagens Docker obsoletas para libertar espaço no NAS...${NC}"
-docker image prune -f | tee -a "$LOG_FILE" || true
+${DOCKER_PREFIX}docker image prune -f 2>&1 | tee -a "$LOG_FILE" || true
 log "${GREEN}✓ Limpeza concluída.${NC}"
 
 log "${GREEN}======================================================${NC}"
