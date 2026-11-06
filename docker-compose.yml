@@ -1,4 +1,4 @@
-# docker-compose.yml — Deploy NAS (Produção e Staging)
+# docker-compose.yml — Deploy NAS (Produção: 4341 e Staging: 4342)
 services:
   slidofnac-prod:
     container_name: slidofnac-prod
@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "${PROD_PORT:-4321}:4321"
+      - "${PROD_PORT:-4341}:4321"
     environment:
       - NODE_ENV=production
       - APP_ENV=production
@@ -26,7 +26,7 @@ services:
     profiles:
       - staging
     ports:
-      - "${STAGING_PORT:-4322}:4321"
+      - "${STAGING_PORT:-4342}:4321"
     environment:
       - NODE_ENV=production
       - APP_ENV=staging
